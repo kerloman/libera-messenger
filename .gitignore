@@ -1,0 +1,27 @@
+# dependencies
+node_modules/
+
+# environment & secrets — never commit
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# runtime data (database, uploaded files)
+server/data/
+server/uploads/
+
+# builds
+app/dist/
+dist/
+
+# logs & OS noise
+*.log
+.DS_Store
+
+# editor/tooling state
+.vscode/*
+!.vscode/extensions.json
+.claude/
+*.tsbuildinfo

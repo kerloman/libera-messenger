@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <linearGradient id="aurora" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4D7CFE"/>
+      <stop offset="1" stop-color="#9F6BFF"/>
+    </linearGradient>
+  </defs>
+  <!-- The Open Loop: a conversation that is never closed -->
+  <circle cx="128" cy="128" r="76" fill="none" stroke="url(#aurora)"
+          stroke-width="30" stroke-linecap="round"
+          stroke-dasharray="404.6 73" transform="rotate(162.4 128 128)"/>
+  <!-- The voice: a single free point at the opening -->
+  <circle cx="57.3" cy="198.7" r="15" fill="url(#aurora)"/>
+</svg>

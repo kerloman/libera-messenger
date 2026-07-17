@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- For light backgrounds -->
+  <g fill="none" stroke="#0B0D12" stroke-width="30" stroke-linecap="round">
+    <circle cx="128" cy="128" r="76" stroke-dasharray="404.6 73" transform="rotate(162.4 128 128)"/>
+  </g>
+  <circle cx="57.3" cy="198.7" r="15" fill="#0B0D12"/>
+</svg>

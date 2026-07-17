@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5A86FF"/>
+      <stop offset=".55" stop-color="#6D6BFF"/>
+      <stop offset="1" stop-color="#9B5CFF"/>
+    </linearGradient>
+    <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".34"/>
+      <stop offset=".5" stop-color="#FFFFFF" stop-opacity=".05"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="squircle"><rect x="0" y="0" width="256" height="256" rx="58"/></clipPath>
+  </defs>
+  <g clip-path="url(#squircle)">
+    <rect width="256" height="256" fill="url(#bg)"/>
+    <!-- liquid glass: soft internal light pools -->
+    <circle cx="70" cy="34" r="120" fill="#FFFFFF" opacity=".14"/>
+    <circle cx="226" cy="250" r="130" fill="#2B1B66" opacity=".22"/>
+    <rect width="256" height="140" fill="url(#sheen)"/>
+    <!-- mark -->
+    <circle cx="128" cy="128" r="62" fill="none" stroke="#FFFFFF" stroke-width="25"
+            stroke-linecap="round" stroke-dasharray="330.1 59.4" transform="rotate(162.4 128 128)"/>
+    <circle cx="70.2" cy="185.8" r="12.5" fill="#FFFFFF"/>
+    <!-- specular edge highlight -->
+    <rect x="1" y="1" width="254" height="254" rx="57" fill="none" stroke="#FFFFFF" stroke-opacity=".35" stroke-width="2"/>
+  </g>
+</svg>
