@@ -25,3 +25,7 @@ dist/
 !.vscode/extensions.json
 .claude/
 *.tsbuildinfo
+
+# desktop (Electron) build outputs
+desktop/release/
+desktop/node_modules/

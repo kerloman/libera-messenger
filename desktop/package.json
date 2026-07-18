@@ -1,0 +1,102 @@
+{
+  "name": "libera-desktop",
+  "productName": "Libera",
+  "version": "1.0.0",
+  "description": "Libera desktop — cross-platform messenger for macOS and Windows",
+  "author": "Kirill Konakov",
+  "license": "MIT",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "LIBERA_SERVER_URL=http://localhost:3001 electron .",
+    "dist:mac": "electron-builder --mac",
+    "dist:win": "electron-builder --win",
+    "dist:all": "electron-builder -mwl"
+  },
+  "devDependencies": {
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "app.libera.messenger",
+    "productName": "Libera",
+    "copyright": "Copyright © 2026 Kirill Konakov",
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**/*",
+      "assets/**/*"
+    ],
+    "directories": {
+      "output": "release",
+      "buildResources": "assets"
+    },
+    "mac": {
+      "category": "public.app-category.social-networking",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "hardenedRuntime": true,
+      "entitlements": "assets/entitlements.mac.plist",
+      "entitlementsInherit": "assets/entitlements.mac.plist",
+      "extendInfo": {
+        "NSCameraUsageDescription": "Libera uses the camera for video calls and photos you send.",
+        "NSMicrophoneUsageDescription": "Libera uses the microphone for calls and voice messages.",
+        "NSPhotoLibraryUsageDescription": "Libera lets you attach photos from your library."
+      }
+    },
+    "dmg": {
+      "title": "Libera ${version}"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "appx",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Libera"
+    },
+    "appx": {
+      "applicationId": "Libera",
+      "identityName": "Libera",
+      "publisher": "CN=Libera",
+      "publisherDisplayName": "Libera"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Network"
+    }
+  }
+}

@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Libera</title>
+<style>
+  :root { color-scheme: light dark; }
+  * { margin: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+    height: 100vh; display: flex; align-items: center; justify-content: center;
+    background: #E9EDF5; color: #0B0D12; text-align: center; padding: 40px;
+    -webkit-app-region: drag;
+  }
+  @media (prefers-color-scheme: dark) { body { background: #05070C; color: #F4F6FB; } }
+  .card { max-width: 420px; }
+  .logo { width: 76px; height: 76px; margin: 0 auto 20px; }
+  h1 { font-size: 22px; font-weight: 800; letter-spacing: -.02em; margin-bottom: 10px; }
+  p { font-size: 14px; line-height: 1.6; opacity: .7; margin-bottom: 8px; }
+  code { font-family: ui-monospace, "SF Mono", monospace; font-size: 13px;
+    background: rgba(125,132,148,.18); padding: 2px 7px; border-radius: 6px; }
+  button {
+    -webkit-app-region: no-drag;
+    margin-top: 22px; font: inherit; font-weight: 650; font-size: 14px;
+    color: #fff; border: 0; border-radius: 13px; padding: 12px 26px; cursor: pointer;
+    background: linear-gradient(135deg, #4D7CFE, #9F6BFF);
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <svg class="logo" viewBox="0 0 256 256">
+      <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#4D7CFE"/><stop offset="1" stop-color="#9F6BFF"/>
+      </linearGradient></defs>
+      <circle cx="128" cy="128" r="76" fill="none" stroke="url(#g)" stroke-width="30"
+        stroke-linecap="round" stroke-dasharray="404.6 73" transform="rotate(162.4 128 128)"/>
+      <circle cx="57.3" cy="198.7" r="15" fill="url(#g)"/>
+    </svg>
+    <h1>Can’t reach the Libera server</h1>
+    <p>The desktop app connects to your Libera backend. Start it, or point the
+       app at the right address.</p>
+    <p id="server"></p>
+    <p>Set <code>LIBERA_SERVER_URL</code> or edit <code>~/.libera-desktop.json</code>, then reconnect (⌘R / Ctrl-R).</p>
+    <button onclick="location.reload()">Retry</button>
+  </div>
+  <script>
+    const s = new URLSearchParams(location.search).get('server')
+    if (s) document.getElementById('server').innerHTML = 'Trying: <code>' + s + '</code>'
+  </script>
+</body>
+</html>
