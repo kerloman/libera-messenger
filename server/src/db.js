@@ -145,6 +145,29 @@ if (!userCols.includes('delete_scheduled_at')) {
   db.exec('ALTER TABLE users ADD COLUMN delete_scheduled_at TEXT')
 }
 
+const memberCols = db.prepare('PRAGMA table_info(chat_members)').all().map((c) => c.name)
+if (!memberCols.includes('muted')) {
+  db.exec('ALTER TABLE chat_members ADD COLUMN muted INTEGER NOT NULL DEFAULT 0')
+}
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS contacts (
+  owner_id   TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  contact_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (owner_id, contact_id)
+);
+CREATE INDEX IF NOT EXISTS idx_contacts_owner ON contacts(owner_id);
+
+CREATE TABLE IF NOT EXISTS blocks (
+  blocker_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  blocked_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (blocker_id, blocked_id)
+);
+CREATE INDEX IF NOT EXISTS idx_blocks_blocked ON blocks(blocked_id);
+`)
+
 export function audit(actorId, action, target = null, meta = null) {
   db.prepare('INSERT INTO audit_log (actor_id, action, target, meta) VALUES (?,?,?,?)')
     .run(actorId, action, target, meta ? JSON.stringify(meta) : null)

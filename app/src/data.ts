@@ -53,11 +53,14 @@ export type Chat = {
   peer: User
   lastMessage: Message | null
   unread: number
+  muted?: boolean
   myLastReadId: number
   peerDeliveredUpTo: number
   peerReadUpTo: number
   typing?: boolean
 }
+
+export type Profile = User & { isContact?: boolean; blockedByMe?: boolean }
 
 export type CallLogItem = {
   id: string

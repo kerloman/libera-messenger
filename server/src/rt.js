@@ -1,7 +1,7 @@
 import crypto from 'node:crypto'
 import { db, audit } from './db.js'
 import { COOKIE, parseCookies, publicUser, sessionUser } from './auth.js'
-import { chatMembers, isMember } from './api.js'
+import { chatMembers, isMember, blockExists } from './api.js'
 
 // Realtime layer: presence, typing, delivery receipts, WebRTC call signaling.
 export function setupRealtime(io) {
@@ -47,7 +47,8 @@ export function setupRealtime(io) {
   function broadcastPresence(userId, isOnline) {
     const lastSeen = new Date().toISOString()
     for (const cid of contactsOf(userId))
-      rt.emitToUser(cid, 'presence', { userId, online: isOnline, lastSeen })
+      if (!blockExists(userId, cid))
+        rt.emitToUser(cid, 'presence', { userId, online: isOnline, lastSeen })
   }
 
   io.use((socket, next) => {

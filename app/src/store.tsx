@@ -55,6 +55,8 @@ type Action =
   | { type: 'CHATS_SET'; chats: Chat[] }
   | { type: 'CHAT_UPSERT'; chat: Chat }
   | { type: 'CHAT_PATCH'; chatId: string; patch: Partial<Chat> }
+  | { type: 'CHAT_REMOVE'; chatId: string }
+  | { type: 'MSGS_CLEAR'; chatId: string }
   | { type: 'MSGS_SET'; chatId: string; messages: Message[]; prepend?: boolean }
   | { type: 'MSG_ADD'; message: Message }
   | { type: 'MSG_UPDATE'; message: Message }
@@ -111,6 +113,22 @@ function reducer(state: State, a: Action): State {
     }
     case 'CHAT_PATCH':
       return { ...state, chats: patchChat(state.chats, a.chatId, a.patch) }
+    case 'CHAT_REMOVE': {
+      const messages = { ...state.messages }
+      delete messages[a.chatId]
+      return {
+        ...state,
+        chats: state.chats.filter((c) => c.id !== a.chatId),
+        messages,
+        activeChat: state.activeChat === a.chatId ? null : state.activeChat,
+      }
+    }
+    case 'MSGS_CLEAR':
+      return {
+        ...state,
+        messages: { ...state.messages, [a.chatId]: [] },
+        chats: patchChat(state.chats, a.chatId, { lastMessage: null, unread: 0 }),
+      }
     case 'MSGS_SET': {
       const cur = state.messages[a.chatId] ?? []
       return {
@@ -261,8 +279,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           api.post(`/chats/${chatId}/read`, { messageId: message.id }).catch(() => {})
           dispatch({ type: 'CHAT_PATCH', chatId, patch: { unread: 0 } })
         } else if (st.prefs.notifications && Notification?.permission === 'granted') {
-          const from = st.chats.find((c) => c.id === chatId)?.peer.displayName ?? 'New message'
-          new Notification(from, { body: message.body ?? 'Attachment', icon: '/favicon.svg' })
+          const chat = st.chats.find((c) => c.id === chatId)
+          if (!chat?.muted)
+            new Notification(chat?.peer.displayName ?? 'New message', {
+              body: message.body ?? 'Attachment',
+              icon: '/favicon.svg',
+            })
         }
         dispatch({ type: 'TYPING', chatId, on: false })
       })
@@ -284,6 +306,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           )
       })
       s.on('chat:new', ({ chat }: { chat: Chat }) => dispatch({ type: 'CHAT_UPSERT', chat }))
+      s.on('chat:cleared', ({ chatId }: { chatId: string }) => dispatch({ type: 'MSGS_CLEAR', chatId }))
+      s.on('chat:deleted', ({ chatId }: { chatId: string }) => dispatch({ type: 'CHAT_REMOVE', chatId }))
       s.on('connect_error', (e) => {
         if (e.message === 'unauthorized') {
           disconnectSocket()

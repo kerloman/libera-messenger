@@ -15,6 +15,8 @@ export function Chats() {
   const [found, setFound] = useState<User[] | null>(null)
   const [searching, setSearching] = useState(false)
   const [profile, setProfile] = useState<User | null>(null)
+  const [plusOpen, setPlusOpen] = useState(false)
+  const [newChat, setNewChat] = useState(false)
   const timer = useRef(0)
 
   // server-side people search, debounced
@@ -50,6 +52,9 @@ export function Chats() {
       <header className="screen-head">
         <div className="head-row">
           <h1>Chats</h1>
+          <button className="icon-btn glass compose-btn" onClick={() => setPlusOpen(true)} title="New">
+            <Icon name="plus" size={20} stroke={2.2} />
+          </button>
         </div>
         <div className="search glass">
           <Icon name="search" size={17} />
@@ -102,6 +107,36 @@ export function Chats() {
       </div>
 
       {profile && <ProfileSheet user={profile} onClose={() => setProfile(null)} />}
+
+      {plusOpen && (
+        <Sheet onClose={() => setPlusOpen(false)} title="New">
+          <div className="sheet-actions">
+            {([
+              { icon: 'chat', label: 'New Chat', sub: 'Message a person', ready: true, act: () => { setPlusOpen(false); setNewChat(true) } },
+              { icon: 'users', label: 'New Group', sub: 'Coming soon', ready: false },
+              { icon: 'speaker', label: 'New Channel', sub: 'Coming soon', ready: false },
+              { icon: 'sparkles', label: 'New Bot', sub: 'Coming soon', ready: false },
+              { icon: 'photo', label: 'New Story', sub: 'Coming soon', ready: false },
+            ] as const).map((o) => (
+              <button
+                key={o.label}
+                className={`sheet-btn plus-item${o.ready ? '' : ' soon'}`}
+                onClick={() => o.ready ? o.act() : actions.toast(`${o.label} is coming in a future update`)}
+              >
+                <Icon name={o.icon} size={20} />
+                <div className="plus-text"><b>{o.label}</b><small>{o.sub}</small></div>
+                {o.ready && <Icon name="chevR" size={15} className="chev" />}
+              </button>
+            ))}
+          </div>
+        </Sheet>
+      )}
+
+      {newChat && (
+        <Sheet onClose={() => setNewChat(false)} title="New Chat">
+          <NewChatSearch onPick={(u) => { setNewChat(false); setProfile(u) }} />
+        </Sheet>
+      )}
     </div>
   )
 }
@@ -199,5 +234,55 @@ export function ProfileSheet({ user, onClose }: { user: User; onClose: () => voi
         )}
       </div>
     </Sheet>
+  )
+}
+
+function NewChatSearch({ onPick }: { onPick: (u: User) => void }) {
+  const [q, setQ] = useState('')
+  const [users, setUsers] = useState<User[] | null>(null)
+  const [contacts, setContacts] = useState<User[]>([])
+  const [busy, setBusy] = useState(false)
+  const timer = useRef(0)
+
+  useEffect(() => {
+    api.get<{ contacts: User[] }>('/contacts').then((r) => setContacts(r.contacts)).catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    window.clearTimeout(timer.current)
+    if (q.trim().length < 2) { setUsers(null); return }
+    setBusy(true)
+    timer.current = window.setTimeout(async () => {
+      try { setUsers((await api.get<{ users: User[] }>(`/users/search?q=${encodeURIComponent(q.trim())}`)).users) }
+      catch { setUsers([]) } finally { setBusy(false) }
+    }, 300)
+  }, [q])
+
+  const list = q.trim().length >= 2 ? users : contacts
+  const label = q.trim().length >= 2 ? 'Search results' : 'Contacts'
+
+  return (
+    <>
+      <div className="search glass" style={{ marginBottom: 10 }}>
+        <Icon name="search" size={16} />
+        <input autoFocus placeholder="Search by @username or name" value={q} onChange={(e) => setQ(e.target.value)} />
+      </div>
+      <div className="sheet-list">
+        <div className="list-label" style={{ paddingLeft: 4 }}>{label}</div>
+        {busy && <div className="list-hint">Searching…</div>}
+        {list?.length === 0 && !busy && (
+          <div className="list-hint">{q.trim().length >= 2 ? 'No users found.' : 'No contacts yet — search to find people.'}</div>
+        )}
+        {list?.map((u) => (
+          <button key={u.id} className="row" onClick={() => onPick(u)}>
+            <Avatar name={u.displayName} seed={u.id} avatar={u.avatar} size={44} online={u.online} />
+            <div className="row-main">
+              <span className="row-name name-row"><span className="name-text">{u.displayName}</span>{u.verified && <Verified size={14} />}</span>
+              <span className="row-preview">@{u.username}</span>
+            </div>
+          </button>
+        ))}
+      </div>
+    </>
   )
 }

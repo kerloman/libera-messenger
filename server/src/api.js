@@ -1,4 +1,5 @@
 import crypto from 'node:crypto'
+import fs from 'node:fs'
 import path from 'node:path'
 import express from 'express'
 import multer from 'multer'
@@ -81,6 +82,19 @@ export function isMember(chatId, userId) {
   return !!db.prepare('SELECT 1 FROM chat_members WHERE chat_id = ? AND user_id = ?').get(chatId, userId)
 }
 
+// a blocked b in either direction
+export function blockExists(a, b) {
+  return !!db
+    .prepare('SELECT 1 FROM blocks WHERE (blocker_id = ? AND blocked_id = ?) OR (blocker_id = ? AND blocked_id = ?)')
+    .get(a, b, b, a)
+}
+export function iBlocked(me, other) {
+  return !!db.prepare('SELECT 1 FROM blocks WHERE blocker_id = ? AND blocked_id = ?').get(me, other)
+}
+export function isContact(me, other) {
+  return !!db.prepare('SELECT 1 FROM contacts WHERE owner_id = ? AND contact_id = ?').get(me, other)
+}
+
 export function serializeChat(chat, forUserId, rt) {
   const peerId = chatMembers(chat.id).find((id) => id !== forUserId) ?? forUserId
   const peer = db.prepare('SELECT * FROM users WHERE id = ?').get(peerId)
@@ -104,6 +118,7 @@ export function serializeChat(chat, forUserId, rt) {
     },
     lastMessage: last ? serializeMessage(last) : null,
     unread,
+    muted: !!my?.muted,
     myLastReadId: my?.last_read_id ?? 0,
     peerDeliveredUpTo: theirs?.last_delivered_id ?? 0,
     peerReadUpTo: theirs?.last_read_id ?? 0,
@@ -304,7 +319,12 @@ export function makeApi(rt) {
          ORDER BY username LIMIT 20`,
       )
       .all(req.user.id, q, `%${q}%`)
-    res.json({ users: rows.map((u) => ({ ...publicUser(u), online: rt.isOnline(u.id) })) })
+    // Hide users involved in a block in either direction.
+    res.json({
+      users: rows
+        .filter((u) => !blockExists(req.user.id, u.id))
+        .map((u) => ({ ...publicUser(u), online: rt.isOnline(u.id) })),
+    })
   })
 
   r.get('/users/:username', (req, res) => {
@@ -320,7 +340,19 @@ export function makeApi(rt) {
          WHERE c.kind = 'dm'`,
       )
       .get(req.user.id, u.id)
-    res.json({ user: { ...publicUser(u), online: rt.isOnline(u.id) }, chatId: chat?.id ?? null })
+    const blockedByMe = iBlocked(req.user.id, u.id)
+    // Presence and last-seen are hidden if either side blocked.
+    const visible = !blockExists(req.user.id, u.id)
+    res.json({
+      user: {
+        ...publicUser(u),
+        online: visible ? rt.isOnline(u.id) : false,
+        lastSeenAt: visible ? u.last_seen_at : null,
+        isContact: isContact(req.user.id, u.id),
+        blockedByMe,
+      },
+      chatId: chat?.id ?? null,
+    })
   })
 
   // ---------- chats ----------
@@ -328,6 +360,8 @@ export function makeApi(rt) {
     const target = db.prepare("SELECT * FROM users WHERE id = ? AND status = 'active'").get(String(req.body?.userId ?? ''))
     if (!target) return res.status(404).json({ error: 'User not found.' })
     if (target.id === req.user.id) return res.status(400).json({ error: 'You cannot message yourself.' })
+    if (blockExists(req.user.id, target.id))
+      return res.status(403).json({ error: 'You cannot start a chat with this user.' })
     const existing = db
       .prepare(
         `SELECT c.* FROM chats c
@@ -373,6 +407,9 @@ export function makeApi(rt) {
     const chatId = req.params.id
     if (!isMember(chatId, req.user.id))
       return res.status(403).json({ error: 'You are not a member of this conversation.' })
+    const peerId = chatMembers(chatId).find((id) => id !== req.user.id)
+    if (peerId && blockExists(req.user.id, peerId))
+      return res.status(403).json({ error: 'You can’t message this user.' })
     if (!rateLimit('msg:' + req.user.id, 30, 10_000))
       return res.status(429).json({ error: 'Slow down a little.' })
 
@@ -421,6 +458,112 @@ export function makeApi(rt) {
       if (uid !== req.user.id)
         rt.emitToUser(uid, 'receipt', { chatId, userId: req.user.id, readUpTo: upTo, deliveredUpTo: upTo })
     res.json({ ok: true })
+  })
+
+  // Mute / unmute notifications for a conversation
+  r.post('/chats/:id/mute', (req, res) => {
+    if (!isMember(req.params.id, req.user.id))
+      return res.status(403).json({ error: 'You are not a member of this conversation.' })
+    db.prepare('UPDATE chat_members SET muted = ? WHERE chat_id = ? AND user_id = ?')
+      .run(req.body?.muted ? 1 : 0, req.params.id, req.user.id)
+    res.json({ muted: !!req.body?.muted })
+  })
+
+  // Categorised shared content in a conversation (real messages, grouped).
+  r.get('/chats/:id/media', (req, res) => {
+    const chatId = req.params.id
+    if (!isMember(chatId, req.user.id))
+      return res.status(403).json({ error: 'You are not a member of this conversation.' })
+    const rows = db
+      .prepare("SELECT * FROM messages WHERE chat_id = ? AND deleted_at IS NULL ORDER BY id DESC")
+      .all(chatId)
+    const out = { photos: [], videos: [], files: [], voice: [], links: [] }
+    const linkRe = /(https?:\/\/[^\s]+)/g
+    for (const m of rows) {
+      const msg = serializeMessage(m)
+      if (m.kind === 'image') out.photos.push(msg)
+      else if (m.kind === 'video') out.videos.push(msg)
+      else if (m.kind === 'voice') out.voice.push(msg)
+      else if (m.kind === 'file') out.files.push(msg)
+      if (m.kind === 'text' && m.body) {
+        const found = m.body.match(linkRe)
+        if (found) out.links.push({ ...msg, urls: found })
+      }
+    }
+    res.json({
+      media: out,
+      counts: Object.fromEntries(Object.entries(out).map(([k, v]) => [k, v.length])),
+    })
+  })
+
+  // Clear every message (both sides) but keep the empty conversation.
+  r.post('/chats/:id/clear', (req, res) => {
+    const chatId = req.params.id
+    if (!isMember(chatId, req.user.id))
+      return res.status(403).json({ error: 'You are not a member of this conversation.' })
+    const files = db
+      .prepare('SELECT a.path FROM attachments a JOIN messages m ON m.id = a.message_id WHERE m.chat_id = ?')
+      .all(chatId)
+    db.prepare('DELETE FROM messages WHERE chat_id = ?').run(chatId)
+    db.prepare('UPDATE chat_members SET last_read_id = 0, last_delivered_id = 0 WHERE chat_id = ?').run(chatId)
+    for (const f of files) { try { fs.unlinkSync(path.join(uploadsDir, path.basename(f.path))) } catch { /* gone */ } }
+    for (const uid of chatMembers(chatId)) rt.emitToUser(uid, 'chat:cleared', { chatId })
+    res.json({ ok: true })
+  })
+
+  // Delete the conversation entirely (removes it for both participants).
+  r.delete('/chats/:id', (req, res) => {
+    const chatId = req.params.id
+    if (!isMember(chatId, req.user.id))
+      return res.status(403).json({ error: 'You are not a member of this conversation.' })
+    const members = chatMembers(chatId)
+    const files = db
+      .prepare('SELECT a.path FROM attachments a JOIN messages m ON m.id = a.message_id WHERE m.chat_id = ?')
+      .all(chatId)
+    db.prepare('DELETE FROM chats WHERE id = ?').run(chatId) // cascades members/messages/attachments/reactions
+    for (const f of files) { try { fs.unlinkSync(path.join(uploadsDir, path.basename(f.path))) } catch { /* gone */ } }
+    for (const uid of members) rt.emitToUser(uid, 'chat:deleted', { chatId })
+    res.json({ ok: true })
+  })
+
+  // ---------- contacts ----------
+  r.get('/contacts', (req, res) => {
+    const rows = db
+      .prepare(
+        `SELECT u.* FROM contacts c JOIN users u ON u.id = c.contact_id
+         WHERE c.owner_id = ? AND u.status = 'active' ORDER BY u.display_name COLLATE NOCASE`,
+      )
+      .all(req.user.id)
+    res.json({ contacts: rows.map((u) => ({ ...publicUser(u), online: rt.isOnline(u.id) })) })
+  })
+
+  r.post('/contacts', (req, res) => {
+    const target = db.prepare("SELECT id FROM users WHERE id = ? AND status = 'active'").get(String(req.body?.userId ?? ''))
+    if (!target) return res.status(404).json({ error: 'User not found.' })
+    if (target.id === req.user.id) return res.status(400).json({ error: 'You cannot add yourself.' })
+    db.prepare('INSERT OR IGNORE INTO contacts (owner_id, contact_id) VALUES (?,?)').run(req.user.id, target.id)
+    res.json({ ok: true, isContact: true })
+  })
+
+  r.delete('/contacts/:userId', (req, res) => {
+    db.prepare('DELETE FROM contacts WHERE owner_id = ? AND contact_id = ?').run(req.user.id, req.params.userId)
+    res.json({ ok: true, isContact: false })
+  })
+
+  // ---------- blocks ----------
+  r.post('/blocks', (req, res) => {
+    const target = db.prepare('SELECT id FROM users WHERE id = ?').get(String(req.body?.userId ?? ''))
+    if (!target) return res.status(404).json({ error: 'User not found.' })
+    if (target.id === req.user.id) return res.status(400).json({ error: 'You cannot block yourself.' })
+    db.prepare('INSERT OR IGNORE INTO blocks (blocker_id, blocked_id) VALUES (?,?)').run(req.user.id, target.id)
+    db.prepare('DELETE FROM contacts WHERE owner_id = ? AND contact_id = ?').run(req.user.id, target.id)
+    audit(req.user.id, 'user.block', target.id)
+    res.json({ ok: true, blockedByMe: true })
+  })
+
+  r.delete('/blocks/:userId', (req, res) => {
+    db.prepare('DELETE FROM blocks WHERE blocker_id = ? AND blocked_id = ?').run(req.user.id, req.params.userId)
+    res.json({ ok: true, blockedByMe: false })
   })
 
   // ---------- messages ----------

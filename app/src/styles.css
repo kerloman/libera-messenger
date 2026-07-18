@@ -1282,3 +1282,74 @@ input:focus, textarea:focus, select:focus, button:focus { outline: none; }
 .del-tab.on { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff; }
 .btn.danger-solid { background: var(--danger); color: #fff; }
 .btn.danger-solid:disabled { opacity: .5; }
+
+/* ============ + menu, new chat, chat profile ============ */
+.compose-btn { color: var(--accent); }
+.plus-item { align-items: center; }
+.plus-item .plus-text { display: flex; flex-direction: column; flex: 1; }
+.plus-item .plus-text b { font-size: .95em; font-weight: 600; }
+.plus-item .plus-text small { font-size: .76em; color: var(--ink-3); }
+.plus-item.soon { opacity: .68; }
+.plus-item.soon svg:first-child { color: var(--ink-3); }
+
+.chat-title-btn { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; text-align: left; padding: 2px; border-radius: 12px; }
+.chat-title-btn:hover { background: var(--hover); }
+.in-chat-search { display: flex; align-items: center; gap: 8px; margin: 8px 12px 0; padding: 6px 12px; border-radius: 14px; }
+.in-chat-search input { flex: 1; background: none; border: none; font-size: .9em; }
+.search-count { align-self: center; font-size: .74em; color: var(--ink-3); padding: 6px 0; }
+
+.profile-overlay { align-items: stretch; justify-content: flex-end; }
+.profile-page {
+  width: min(440px, 100%); height: 100%;
+  display: flex; flex-direction: column;
+  animation: slide-in .32s var(--ease);
+  border-radius: 0;
+}
+@media (min-width: 500px) { .profile-page { border-radius: 24px 0 0 24px; } }
+@keyframes slide-in { from { transform: translateX(30px); opacity: .4; } }
+.pp-head { display: flex; align-items: center; gap: 8px; padding: 14px; border-bottom: 1px solid var(--stroke); }
+.pp-head-title { font-weight: 700; font-size: 1.05em; }
+.pp-scroll { flex: 1; overflow-y: auto; padding-bottom: 24px; }
+.pp-hero { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 28px 20px 22px; }
+.pp-hero-glow { position: absolute; inset: 0; opacity: .5; pointer-events: none; }
+.pp-hero h2 { font-size: 1.5em; font-weight: 800; letter-spacing: -.02em; margin-top: 12px; z-index: 1; }
+.pp-username { color: var(--accent); font-weight: 600; font-size: .92em; z-index: 1; }
+.pp-status { font-size: .82em; color: var(--ink-3); z-index: 1; }
+.pp-status.online { color: var(--success); }
+.pp-blocked { display: inline-flex; align-items: center; gap: 5px; font-size: .76em; font-weight: 650; color: var(--danger); margin-top: 4px; }
+.pp-card { margin: 0 16px 16px; border-radius: 18px; padding: 4px 14px; }
+.pp-info-row { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--stroke); }
+.pp-info-row:last-child { border-bottom: none; }
+.pp-info-row svg { color: var(--ink-3); flex-shrink: 0; }
+.pp-info-row small { display: block; font-size: .72em; color: var(--ink-3); }
+.pp-info-row span { font-size: .9em; }
+.pp-actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 0 16px 20px; }
+.pp-action { display: flex; flex-direction: column; align-items: center; gap: 7px; font-size: .72em; color: var(--ink-2); }
+.pp-action-ic { width: 52px; height: 52px; border-radius: 16px; display: grid; place-items: center; color: var(--accent); transition: transform .15s var(--ease); }
+.pp-action:hover .pp-action-ic { transform: scale(1.07); }
+.pp-section-label { font-size: .72em; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--ink-3); padding: 4px 20px 8px; }
+.pp-empty-media { padding: 20px; text-align: center; color: var(--ink-3); font-size: .85em; }
+.pp-tabs { display: flex; gap: 6px; padding: 0 16px 12px; overflow-x: auto; scrollbar-width: none; }
+.pp-tab { flex-shrink: 0; padding: 7px 13px; border-radius: 100px; font-size: .8em; font-weight: 600; background: var(--hover); color: var(--ink-2); display: inline-flex; align-items: center; gap: 6px; }
+.pp-tab.on { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff; }
+.pp-tab-n { font-size: .85em; opacity: .8; }
+.pp-media { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 0 16px; }
+.pp-media-cell { position: relative; aspect-ratio: 1; border-radius: 10px; overflow: hidden; background: var(--hover); }
+.pp-media-cell img, .pp-media-cell video { width: 100%; height: 100%; object-fit: cover; }
+.pp-play { position: absolute; inset: 0; display: grid; place-items: center; color: #fff; font-size: 20px; text-shadow: 0 2px 8px rgba(0,0,0,.5); }
+.pp-list { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 6px; }
+.pp-file, .pp-link { display: flex; align-items: center; gap: 11px; padding: 10px; border-radius: 12px; background: var(--hover); text-decoration: none; color: inherit; }
+.pp-file .file-ic, .pp-link .file-ic { width: 40px; height: 40px; border-radius: 11px; display: grid; place-items: center; background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff; flex-shrink: 0; }
+.pp-file .file-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.pp-file .file-info b { font-size: .86em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pp-file .file-info span { font-size: .74em; color: var(--ink-3); }
+.pp-link span { font-size: .82em; color: var(--accent); word-break: break-all; }
+.pp-voice { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 12px; background: var(--hover); }
+.pp-voice audio { flex: 1; height: 34px; }
+.pp-voice span { font-size: .76em; color: var(--ink-3); }
+.pp-danger { display: flex; flex-direction: column; margin: 18px 16px 0; border-radius: 18px; overflow: hidden; }
+.pp-danger-btn { display: flex; align-items: center; gap: 12px; padding: 13px 16px; font-size: .9em; font-weight: 550; color: var(--ink); background: var(--hover); border-bottom: 1px solid var(--stroke); text-align: left; }
+.pp-danger-btn:last-child { border-bottom: none; }
+.pp-danger-btn svg { color: var(--accent); }
+.pp-danger-btn.danger, .pp-danger-btn.danger svg { color: var(--danger); }
+.pp-danger-btn:hover { filter: brightness(1.05); }

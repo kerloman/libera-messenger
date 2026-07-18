@@ -9,6 +9,7 @@ import { Avatar } from '../ui/Avatar'
 import { Icon } from '../ui/Icons'
 import { Sheet } from '../ui/Sheet'
 import { Verified } from '../ui/Verified'
+import { ChatProfile } from './ChatProfile'
 
 const quickReactions = ['❤️', '👍', '🔥', '😂', '😮', '🙏']
 
@@ -26,6 +27,9 @@ export function ChatView({ wide }: { wide?: boolean }) {
   const [recording, setRecording] = useState<{ startedAt: number } | null>(null)
   const [canLoadEarlier, setCanLoadEarlier] = useState(msgs.length >= 50)
   const [sending, setSending] = useState(false)
+  const [showProfile, setShowProfile] = useState(false)
+  const [searching, setSearching] = useState(false)
+  const [searchQ, setSearchQ] = useState('')
 
   const endRef = useRef<HTMLDivElement>(null)
   const typingUntil = useRef(0)
@@ -149,17 +153,22 @@ export function ChatView({ wide }: { wide?: boolean }) {
             <Icon name="back" size={22} />
           </button>
         )}
-        <Avatar name={chat.peer.displayName} seed={chat.peer.id} avatar={chat.peer.avatar} size={40} online={chat.peer.online} />
-        <div className="chat-title">
-          <span className="chat-name name-row">
-            <span className="name-text">{chat.peer.displayName}</span>
-            {chat.peer.verified && <Verified size={15} />}
-          </span>
-          <span className={`chat-status${chat.typing ? ' typing' : ''}${chat.peer.online && !chat.typing ? ' online' : ''}`}>
-            {status}
-          </span>
-        </div>
+        <button className="chat-title-btn" onClick={() => setShowProfile(true)} title="View profile">
+          <Avatar name={chat.peer.displayName} seed={chat.peer.id} avatar={chat.peer.avatar} size={40} online={chat.peer.online} />
+          <div className="chat-title">
+            <span className="chat-name name-row">
+              <span className="name-text">{chat.peer.displayName}</span>
+              {chat.peer.verified && <Verified size={15} />}
+            </span>
+            <span className={`chat-status${chat.typing ? ' typing' : ''}${chat.peer.online && !chat.typing ? ' online' : ''}`}>
+              {status}
+            </span>
+          </div>
+        </button>
         <div className="head-actions">
+          <button className="icon-btn" title="Search in conversation" onClick={() => setSearching((v) => !v)}>
+            <Icon name="search" size={20} />
+          </button>
           <button className="icon-btn" title="Voice call" onClick={() => startCall(chat.id, chat.peer, false)}>
             <Icon name="phone" size={21} />
           </button>
@@ -168,6 +177,14 @@ export function ChatView({ wide }: { wide?: boolean }) {
           </button>
         </div>
       </header>
+
+      {searching && (
+        <div className="in-chat-search glass">
+          <Icon name="search" size={16} />
+          <input autoFocus placeholder="Search in this conversation" value={searchQ} onChange={(e) => setSearchQ(e.target.value)} />
+          <button className="icon-btn" onClick={() => { setSearching(false); setSearchQ('') }}><Icon name="x" size={16} /></button>
+        </div>
+      )}
 
       <div className="msgs">
         {canLoadEarlier && (
@@ -183,16 +200,23 @@ export function ChatView({ wide }: { wide?: boolean }) {
             <Icon name="lock" size={12} /> This is the beginning of your conversation with {chat.peer.displayName}.
           </div>
         )}
-        {msgs.map((m, i) => (
-          <Bubble
-            key={m.id}
-            m={m}
-            all={msgs}
-            first={i === 0 || msgs[i - 1].senderId !== m.senderId}
-            tick={m.senderId === state.me?.id ? tickFor(chat, m) : null}
-            onSelect={() => !m.deleted && setSelected(m.id)}
-          />
-        ))}
+        {searching && searchQ.trim() && (
+          <div className="search-count">
+            {msgs.filter((m) => m.body?.toLowerCase().includes(searchQ.toLowerCase())).length} match(es)
+          </div>
+        )}
+        {msgs
+          .filter((m) => !searching || !searchQ.trim() || m.body?.toLowerCase().includes(searchQ.toLowerCase()))
+          .map((m, i, arr) => (
+            <Bubble
+              key={m.id}
+              m={m}
+              all={msgs}
+              first={i === 0 || arr[i - 1].senderId !== m.senderId}
+              tick={m.senderId === state.me?.id ? tickFor(chat, m) : null}
+              onSelect={() => !m.deleted && setSelected(m.id)}
+            />
+          ))}
         {chat.typing && (
           <div className="msg in">
             <div className="bubble typing-bubble"><span /><span /><span /></div>
@@ -355,6 +379,10 @@ export function ChatView({ wide }: { wide?: boolean }) {
             {state.chats.length <= 1 && <div className="list-hint">No other conversations yet.</div>}
           </div>
         </Sheet>
+      )}
+
+      {showProfile && (
+        <ChatProfile chat={chat} onClose={() => setShowProfile(false)} onSearch={() => setSearching(true)} />
       )}
     </div>
   )
