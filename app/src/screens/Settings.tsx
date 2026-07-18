@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { accents, wallpapers } from '../data'
+import { accents, daysUntil, fmtDate, wallpapers } from '../data'
 import type { Me } from '../data'
 import { api } from '../lib/api'
 import { useStore as useAppStore } from '../store'
@@ -8,6 +8,7 @@ import type { Prefs } from '../store'
 import { Avatar } from '../ui/Avatar'
 import { Icon } from '../ui/Icons'
 import { Sheet } from '../ui/Sheet'
+import { Verified } from '../ui/Verified'
 
 type Session = { id: number; userAgent: string | null; createdAt: string; current: boolean }
 
@@ -17,8 +18,19 @@ export function Settings() {
   const p = state.prefs
   const [editOpen, setEditOpen] = useState(false)
   const [pwOpen, setPwOpen] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
   const [sessions, setSessions] = useState<Session[] | null>(null)
   const avatarInput = useRef<HTMLInputElement>(null)
+
+  const cancelScheduledDeletion = async () => {
+    try {
+      await api.del('/me/schedule-deletion')
+      dispatch({ type: 'SET_ME', me: { ...me, deleteScheduledAt: null } })
+      actions.toast('Scheduled deletion cancelled')
+    } catch (e) {
+      actions.toast((e as Error).message)
+    }
+  }
 
   const set = <K extends keyof Prefs>(key: K, value: Prefs[K]) => dispatch({ type: 'PREF', key, value })
 
@@ -73,6 +85,19 @@ export function Settings() {
       </header>
 
       <div className="settings-scroll">
+        {me.deleteScheduledAt && (
+          <div className="sched-banner glass">
+            <Icon name="clock" size={18} />
+            <div>
+              <b>Account deletion scheduled</b>
+              <span className="sub">
+                {daysUntil(me.deleteScheduledAt)} day{daysUntil(me.deleteScheduledAt) === 1 ? '' : 's'} left —
+                permanently deletes on {fmtDate(me.deleteScheduledAt)}. You can keep using Libera until then.
+              </span>
+            </div>
+            <button className="cancel" onClick={cancelScheduledDeletion}>Cancel</button>
+          </div>
+        )}
         {!me.emailVerified && (
           <div className="verify-banner glass">
             <Icon name="info" size={16} />
@@ -88,7 +113,7 @@ export function Settings() {
             <span className="avatar-edit"><Icon name="camera" size={13} /></span>
           </button>
           <div className="profile-info">
-            <b>{me.displayName}</b>
+            <b className="name-row"><span className="name-text">{me.displayName}</span>{me.verified && <Verified size={17} />}</b>
             <span className="uname">@{me.username}</span>
             {me.bio && <span className="bio">{me.bio}</span>}
           </div>
@@ -168,13 +193,123 @@ export function Settings() {
           </Group>
         )}
 
+        <Group label="Account Management">
+          <div className="set-row danger-zone tappable" onClick={() => setDeleteOpen(true)}>
+            <div className="set-ic"><Icon name="trash" size={17} stroke={2} /></div>
+            <div className="set-main">
+              <span>Delete account</span>
+              <small>{me.deleteScheduledAt ? `Scheduled · ${daysUntil(me.deleteScheduledAt)} days left` : 'Delete now or schedule for later'}</small>
+            </div>
+            <Icon name="chevR" size={15} className="chev" />
+          </div>
+        </Group>
+
         <button className="logout-btn glass" onClick={() => actions.logout()}>Log out</button>
         <p className="version">Libera · your data lives on your own server</p>
       </div>
 
       {editOpen && <EditProfile me={me} onClose={() => setEditOpen(false)} />}
       {pwOpen && <ChangePassword onClose={() => setPwOpen(false)} />}
+      {deleteOpen && <DeleteAccount onClose={() => setDeleteOpen(false)} />}
     </div>
+  )
+}
+
+function DeleteAccount({ onClose }: { onClose: () => void }) {
+  const { state, dispatch, actions } = useAppStore()
+  const me = state.me!
+  const [mode, setMode] = useState<'schedule' | 'now'>(me.deleteScheduledAt ? 'schedule' : 'schedule')
+  const [months, setMonths] = useState(3)
+  const [password, setPassword] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+  const periods = [1, 3, 6, 12, 18, 24]
+
+  const schedule = async () => {
+    setErr(null); setBusy(true)
+    try {
+      const { deleteScheduledAt } = await api.post<{ deleteScheduledAt: string }>('/me/schedule-deletion', { months })
+      dispatch({ type: 'SET_ME', me: { ...me, deleteScheduledAt } })
+      actions.toast(`Deletion scheduled in ${months} month${months === 1 ? '' : 's'}`)
+      onClose()
+    } catch (e) { setErr((e as Error).message) } finally { setBusy(false) }
+  }
+
+  const cancel = async () => {
+    setBusy(true)
+    try {
+      await api.del('/me/schedule-deletion')
+      dispatch({ type: 'SET_ME', me: { ...me, deleteScheduledAt: null } })
+      actions.toast('Scheduled deletion cancelled')
+      onClose()
+    } catch (e) { setErr((e as Error).message) } finally { setBusy(false) }
+  }
+
+  const deleteNow = async () => {
+    setErr(null); setBusy(true)
+    try {
+      await api.post('/me/delete', { password })
+      actions.toast('Account deleted')
+      dispatch({ type: 'SET_ME', me: null })
+    } catch (e) { setErr((e as Error).message); setBusy(false) }
+  }
+
+  return (
+    <Sheet onClose={onClose} title="Delete account">
+      {err && <div className="form-error">{err}</div>}
+
+      {me.deleteScheduledAt && (
+        <div className="sched-banner" style={{ marginBottom: 14 }}>
+          <Icon name="clock" size={18} />
+          <div>
+            <b>Deletion scheduled</b>
+            <span className="sub">{daysUntil(me.deleteScheduledAt)} days left · {fmtDate(me.deleteScheduledAt)}</span>
+          </div>
+        </div>
+      )}
+
+      <div className="del-tabs">
+        <button className={`del-tab${mode === 'schedule' ? ' on' : ''}`} onClick={() => setMode('schedule')}>Schedule</button>
+        <button className={`del-tab${mode === 'now' ? ' on' : ''}`} onClick={() => setMode('now')}>Delete now</button>
+      </div>
+
+      <div className="del-warn">
+        Deleting your account permanently removes your profile, private chats, messages,
+        uploaded files and sign-in credentials. This cannot be undone.
+      </div>
+
+      {mode === 'schedule' ? (
+        <>
+          <p className="group-label" style={{ paddingLeft: 2 }}>Delete automatically after</p>
+          <div className="del-periods">
+            {periods.map((m) => (
+              <button key={m} className={`del-period${months === m ? ' on' : ''}`} onClick={() => setMonths(m)}>
+                {m} month{m === 1 ? '' : 's'}
+              </button>
+            ))}
+          </div>
+          <button className="btn danger-solid" disabled={busy} onClick={schedule}>
+            {me.deleteScheduledAt ? 'Update scheduled date' : 'Schedule deletion'}
+          </button>
+          {me.deleteScheduledAt && (
+            <button className="btn glass" style={{ marginTop: 8 }} disabled={busy} onClick={cancel}>
+              Cancel scheduled deletion
+            </button>
+          )}
+        </>
+      ) : (
+        <>
+          <div className="field glass">
+            <Icon name="key" size={18} />
+            <input type="password" placeholder="Confirm your password" value={password}
+                   onChange={(e) => setPassword(e.target.value)} />
+          </div>
+          <button className="btn danger-solid" style={{ marginTop: 12 }} disabled={busy || !password} onClick={deleteNow}>
+            {busy ? 'Deleting…' : 'Permanently delete my account'}
+          </button>
+        </>
+      )}
+    </Sheet>
   )
 }
 

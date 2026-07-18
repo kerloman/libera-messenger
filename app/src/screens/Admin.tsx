@@ -6,6 +6,7 @@ import { useStore } from '../store'
 import { Avatar } from '../ui/Avatar'
 import { Icon } from '../ui/Icons'
 import { Logo } from '../ui/Logo'
+import { Verified } from '../ui/Verified'
 
 type Section = 'dashboard' | 'users' | 'reports' | 'logs'
 
@@ -179,7 +180,7 @@ function Users({ meRole, onToast }: { meRole: string; onToast: (m: string) => vo
               <td>
                 <div className="cell-user">
                   <Avatar name={u.displayName} seed={u.id} avatar={u.avatar} size={30} />
-                  <div className="cell-2l"><span>{u.displayName}</span><small>@{u.username}</small></div>
+                  <div className="cell-2l"><span className="name-row"><span className="name-text">{u.displayName}</span>{u.verified && <Verified size={14} />}</span><small>@{u.username}</small></div>
                 </div>
               </td>
               {isAdmin && <td className="dim">{u.email}{u.emailVerified ? ' ✓' : ''}</td>}

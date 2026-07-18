@@ -8,13 +8,18 @@ export type User = {
   bio: string
   avatar: string | null
   role: 'user' | 'moderator' | 'admin' | 'owner'
+  verified?: boolean // true for owner/admin — role-derived, set by the server only
   online?: boolean
   lastSeenAt?: string | null
   createdAt?: string
   status?: string
 }
 
-export type Me = User & { email: string; emailVerified: boolean }
+export type Me = User & {
+  email: string
+  emailVerified: boolean
+  deleteScheduledAt?: string | null
+}
 
 export type Attachment = {
   url: string
@@ -107,6 +112,16 @@ export function fmtTime(iso: string | undefined | null) {
 export function fmtLastSeen(iso: string | null | undefined) {
   if (!iso) return 'last seen recently'
   return `last seen ${fmtTime(iso)}`
+}
+
+export function daysUntil(iso: string | null | undefined): number {
+  if (!iso) return 0
+  return Math.max(0, Math.ceil((new Date(iso).getTime() - Date.now()) / 86400_000))
+}
+
+export function fmtDate(iso: string | null | undefined) {
+  if (!iso) return ''
+  return new Date(iso).toLocaleDateString([], { year: 'numeric', month: 'long', day: 'numeric' })
 }
 
 export function fmtSize(bytes: number) {

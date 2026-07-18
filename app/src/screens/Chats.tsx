@@ -7,6 +7,7 @@ import { Avatar } from '../ui/Avatar'
 import { Icon } from '../ui/Icons'
 import { Sheet } from '../ui/Sheet'
 import { Logo } from '../ui/Logo'
+import { Verified } from '../ui/Verified'
 
 export function Chats() {
   const { state, actions } = useStore()
@@ -79,7 +80,10 @@ export function Chats() {
               <button key={u.id} className="row" onClick={() => setProfile(u)}>
                 <Avatar name={u.displayName} seed={u.id} avatar={u.avatar} size={48} online={u.online} />
                 <div className="row-main">
-                  <span className="row-name">{u.displayName}</span>
+                  <span className="row-name name-row">
+                    <span className="name-text">{u.displayName}</span>
+                    {u.verified && <Verified size={15} />}
+                  </span>
                   <span className="row-preview">@{u.username}</span>
                 </div>
                 <Icon name="chevR" size={16} className="chev" />
@@ -110,7 +114,10 @@ function ChatRow({ chat, onOpen }: { chat: Chat; onOpen: () => void }) {
     <div className={`row chat-row${state.activeChat === chat.id ? ' active' : ''}`} onClick={onOpen}>
       <Avatar name={chat.peer.displayName} seed={chat.peer.id} avatar={chat.peer.avatar} size={54} online={chat.peer.online} />
       <div className="row-main">
-        <span className="row-name">{chat.peer.displayName}</span>
+        <span className="row-name name-row">
+          <span className="name-text">{chat.peer.displayName}</span>
+          {chat.peer.verified && <Verified size={15} />}
+        </span>
         <span className={`row-preview${chat.typing ? ' typing' : ''}`}>
           {chat.typing ? 'typing…' : (
             <>
@@ -167,7 +174,7 @@ export function ProfileSheet({ user, onClose }: { user: User; onClose: () => voi
     <Sheet onClose={onClose}>
       <div className="profile-view">
         <Avatar name={user.displayName} seed={user.id} avatar={user.avatar} size={84} online={user.online} />
-        <b>{user.displayName}</b>
+        <b className="name-row"><span className="name-text">{user.displayName}</span>{user.verified && <Verified size={18} />}</b>
         <span className="uname">@{user.username}</span>
         {user.bio && <p className="bio">{user.bio}</p>}
         <span className="presence">{user.online ? 'online' : fmtLastSeen(user.lastSeenAt)}</span>

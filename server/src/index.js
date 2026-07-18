@@ -8,6 +8,7 @@ import { db, uploadsDir } from './db.js'
 import { authRequired } from './auth.js'
 import { makeApi, isMember } from './api.js'
 import { setupRealtime } from './rt.js'
+import { runDueDeletions } from './purge.js'
 
 const PORT = Number(process.env.PORT || 3001)
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)))
@@ -62,3 +63,15 @@ if (!process.env.SESSION_SECRET) {
 server.listen(PORT, () => {
   console.log(`Libera server listening on http://localhost:${PORT}`)
 })
+
+// Enforce scheduled account deletions: sweep on startup, then hourly.
+function sweepDeletions() {
+  try {
+    const n = runDueDeletions()
+    if (n) console.log(`[deletion] purged ${n} account(s) whose scheduled date passed`)
+  } catch (e) {
+    console.error('[deletion] sweep failed:', e.message)
+  }
+}
+sweepDeletions()
+setInterval(sweepDeletions, 3600_000).unref()

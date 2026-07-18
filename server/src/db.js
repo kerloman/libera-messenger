@@ -139,6 +139,12 @@ CREATE TABLE IF NOT EXISTS audit_log (
 );
 `)
 
+// ---- migrations (additive; safe on existing databases) ----
+const userCols = db.prepare('PRAGMA table_info(users)').all().map((c) => c.name)
+if (!userCols.includes('delete_scheduled_at')) {
+  db.exec('ALTER TABLE users ADD COLUMN delete_scheduled_at TEXT')
+}
+
 export function audit(actorId, action, target = null, meta = null) {
   db.prepare('INSERT INTO audit_log (actor_id, action, target, meta) VALUES (?,?,?,?)')
     .run(actorId, action, target, meta ? JSON.stringify(meta) : null)

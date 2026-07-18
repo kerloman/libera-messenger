@@ -10,6 +10,11 @@ const uid = () => crypto.randomUUID()
 const token = () => crypto.randomBytes(32).toString('hex')
 const days = (n) => new Date(Date.now() + n * 86400_000).toISOString()
 
+// Verified badge is derived purely from role — Owner/Admin only. It is never
+// stored or client-settable, so it cannot be self-granted and disappears the
+// moment a role is revoked.
+export const isVerified = (role) => role === 'owner' || role === 'admin'
+
 export const publicUser = (u) => ({
   id: u.id,
   username: u.username,
@@ -17,6 +22,7 @@ export const publicUser = (u) => ({
   bio: u.bio,
   avatar: u.avatar,
   role: u.role,
+  verified: isVerified(u.role),
   createdAt: u.created_at,
   lastSeenAt: u.last_seen_at,
 })
@@ -26,6 +32,7 @@ export const meUser = (u) => ({
   email: u.email,
   emailVerified: !!u.email_verified,
   status: u.status,
+  deleteScheduledAt: u.delete_scheduled_at ?? null,
 })
 
 // ---------- validation ----------

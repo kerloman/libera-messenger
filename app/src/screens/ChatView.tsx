@@ -8,6 +8,7 @@ import { tickFor, useStore } from '../store'
 import { Avatar } from '../ui/Avatar'
 import { Icon } from '../ui/Icons'
 import { Sheet } from '../ui/Sheet'
+import { Verified } from '../ui/Verified'
 
 const quickReactions = ['❤️', '👍', '🔥', '😂', '😮', '🙏']
 
@@ -150,7 +151,10 @@ export function ChatView({ wide }: { wide?: boolean }) {
         )}
         <Avatar name={chat.peer.displayName} seed={chat.peer.id} avatar={chat.peer.avatar} size={40} online={chat.peer.online} />
         <div className="chat-title">
-          <span className="chat-name">{chat.peer.displayName}</span>
+          <span className="chat-name name-row">
+            <span className="name-text">{chat.peer.displayName}</span>
+            {chat.peer.verified && <Verified size={15} />}
+          </span>
           <span className={`chat-status${chat.typing ? ' typing' : ''}${chat.peer.online && !chat.typing ? ' online' : ''}`}>
             {status}
           </span>

@@ -9,6 +9,7 @@ import {
   meUser, parseCookies, publicUser, register, requestPasswordReset, requireRank,
   resetPassword, sessionUser, validateRegistration, verifyEmail,
 } from './auth.js'
+import { DELETE_PERIODS, purgeUser, scheduleDate } from './purge.js'
 
 const MAX_FILE = 25 * 1024 * 1024
 const MAX_AVATAR = 5 * 1024 * 1024
@@ -237,6 +238,41 @@ export function makeApi(rt) {
 
   r.delete('/me/sessions/:id', (req, res) => {
     db.prepare('DELETE FROM sessions WHERE rowid = ? AND user_id = ?').run(Number(req.params.id), req.user.id)
+    res.json({ ok: true })
+  })
+
+  // ---------- account management: deletion ----------
+  r.get('/me/deletion-periods', (_req, res) => res.json({ months: DELETE_PERIODS }))
+
+  // Schedule automatic deletion N months out. User keeps full access meanwhile.
+  r.post('/me/schedule-deletion', (req, res) => {
+    const months = Number(req.body?.months)
+    if (!DELETE_PERIODS.includes(months))
+      return res.status(400).json({ error: 'Choose 1, 3, 6, 12, 18 or 24 months.' })
+    const when = scheduleDate(months)
+    db.prepare('UPDATE users SET delete_scheduled_at = ? WHERE id = ?').run(when, req.user.id)
+    audit(req.user.id, 'account.schedule_deletion', req.user.id, { months })
+    res.json({ deleteScheduledAt: when })
+  })
+
+  // Cancel a pending scheduled deletion.
+  r.delete('/me/schedule-deletion', (req, res) => {
+    db.prepare('UPDATE users SET delete_scheduled_at = NULL WHERE id = ?').run(req.user.id)
+    audit(req.user.id, 'account.cancel_deletion', req.user.id)
+    res.json({ deleteScheduledAt: null })
+  })
+
+  // Delete the account immediately and irreversibly. Requires the current
+  // password as confirmation (defence against a hijacked session).
+  r.post('/me/delete', (req, res) => {
+    if (!bcrypt.compareSync(String(req.body?.password ?? ''), req.user.password_hash))
+      return res.status(400).json({ error: 'Password is incorrect.' })
+    if (req.user.role === 'owner' && db.prepare("SELECT COUNT(*) AS n FROM users WHERE role = 'owner'").get().n <= 1)
+      return res.status(400).json({ error: 'Transfer ownership to another owner before deleting the last owner account.' })
+    const id = req.user.id
+    rt.disconnectUser(id)
+    purgeUser(id)
+    res.setHeader('Set-Cookie', `${COOKIE}=; HttpOnly; Path=/; Max-Age=0`)
     res.json({ ok: true })
   })
 
