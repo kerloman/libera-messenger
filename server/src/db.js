@@ -150,6 +150,26 @@ if (!memberCols.includes('muted')) {
   db.exec('ALTER TABLE chat_members ADD COLUMN muted INTEGER NOT NULL DEFAULT 0')
 }
 
+// Privacy preferences (enforced server-side; see auth.js visibleUser).
+const privacyCols = {
+  privacy_last_seen: "TEXT NOT NULL DEFAULT 'everyone'",
+  privacy_last_seen_mode: "TEXT NOT NULL DEFAULT 'exact'",
+  privacy_online: "TEXT NOT NULL DEFAULT 'everyone'",
+  privacy_photo: "TEXT NOT NULL DEFAULT 'everyone'",
+  privacy_bio: "TEXT NOT NULL DEFAULT 'everyone'",
+  privacy_email: "TEXT NOT NULL DEFAULT 'nobody'",
+  privacy_calls: "TEXT NOT NULL DEFAULT 'everyone'",
+  read_receipts: 'INTEGER NOT NULL DEFAULT 1',
+  typing_indicator: 'INTEGER NOT NULL DEFAULT 1',
+}
+for (const [col, def] of Object.entries(privacyCols)) {
+  if (!userCols.includes(col)) db.exec(`ALTER TABLE users ADD COLUMN ${col} ${def}`)
+}
+
+const sessionCols = db.prepare('PRAGMA table_info(sessions)').all().map((c) => c.name)
+if (!sessionCols.includes('ip')) db.exec('ALTER TABLE sessions ADD COLUMN ip TEXT')
+if (!sessionCols.includes('platform')) db.exec('ALTER TABLE sessions ADD COLUMN platform TEXT')
+
 db.exec(`
 CREATE TABLE IF NOT EXISTS contacts (
   owner_id   TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,

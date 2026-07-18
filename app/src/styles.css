@@ -1353,3 +1353,33 @@ input:focus, textarea:focus, select:focus, button:focus { outline: none; }
 .pp-danger-btn svg { color: var(--accent); }
 .pp-danger-btn.danger, .pp-danger-btn.danger svg { color: var(--danger); }
 .pp-danger-btn:hover { filter: brightness(1.05); }
+
+/* ============ privacy & security ============ */
+.priv-scroll { padding: 16px; display: flex; flex-direction: column; gap: 18px; }
+.priv-intro { font-size: .82em; color: var(--ink-2); line-height: 1.55; }
+.priv-row { flex-wrap: wrap; }
+.priv-row .set-side { width: 100%; margin-top: 8px; }
+.vis-seg { width: 100%; }
+.vis-seg button { flex: 1; padding: 7px 4px; font-size: .78em; }
+.priv-note { display: flex; gap: 9px; align-items: flex-start; font-size: .76em; color: var(--ink-3); line-height: 1.5; padding: 4px 6px 10px; }
+.priv-note svg { color: var(--accent); flex-shrink: 0; margin-top: 1px; }
+
+.admin-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--ink-3); flex-shrink: 0; }
+.admin-dot.on { background: var(--success); box-shadow: 0 0 0 3px color-mix(in srgb, var(--success) 25%, transparent); }
+.sec-modal { width: min(460px, 92%); max-height: 84%; overflow-y: auto; border-radius: 22px; padding: 18px; }
+.sec-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 6px 0 12px; }
+.sec-grid > div { display: flex; flex-direction: column; gap: 2px; }
+.sec-grid small { font-size: .7em; color: var(--ink-3); text-transform: uppercase; letter-spacing: .05em; }
+.sec-grid b { font-size: .95em; }
+.sec-grid b.on { color: var(--success); }
+.sec-note { display: flex; align-items: center; gap: 6px; font-size: .72em; color: var(--ink-3); margin-bottom: 12px; }
+.sec-note svg { color: var(--warn); }
+.sec-sessions { display: flex; flex-direction: column; gap: 8px; }
+.sec-session { display: flex; align-items: center; gap: 11px; padding: 10px 12px; border-radius: 12px; background: var(--hover); }
+.sec-session > svg { color: var(--ink-2); }
+.sec-s-main { flex: 1; display: flex; flex-direction: column; }
+.sec-s-main b { font-size: .86em; }
+.sec-s-main small { font-size: .72em; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; }
+.sec-s-meta { display: flex; flex-direction: column; align-items: flex-end; }
+.sec-s-meta span { font-size: .78em; font-variant-numeric: tabular-nums; }
+.sec-s-meta small { font-size: .7em; color: var(--ink-3); }

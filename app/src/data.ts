@@ -1,6 +1,21 @@
 // Shared types and pure helpers. All actual data comes from the server —
 // nothing in this file defines users, chats, or messages.
 
+export type Visibility = 'everyone' | 'contacts' | 'nobody'
+export type LastSeenMode = 'exact' | 'recently' | 'week' | 'month' | 'long'
+
+export type Privacy = {
+  lastSeen: Visibility
+  lastSeenMode: LastSeenMode
+  online: Visibility
+  photo: Visibility
+  bio: Visibility
+  email: Visibility
+  calls: Visibility
+  readReceipts: boolean
+  typingIndicator: boolean
+}
+
 export type User = {
   id: string
   username: string
@@ -11,6 +26,8 @@ export type User = {
   verified?: boolean // true for owner/admin — role-derived, set by the server only
   online?: boolean
   lastSeenAt?: string | null
+  lastSeenLabel?: string | null // coarse label when exact time is hidden by privacy
+  email?: string | null
   createdAt?: string
   status?: string
 }
@@ -19,6 +36,7 @@ export type Me = User & {
   email: string
   emailVerified: boolean
   deleteScheduledAt?: string | null
+  privacy: Privacy
 }
 
 export type Attachment = {
@@ -112,7 +130,8 @@ export function fmtTime(iso: string | undefined | null) {
   return d.toLocaleDateString([], { month: 'short', day: 'numeric' })
 }
 
-export function fmtLastSeen(iso: string | null | undefined) {
+export function fmtLastSeen(iso: string | null | undefined, label?: string | null) {
+  if (label) return label
   if (!iso) return 'last seen recently'
   return `last seen ${fmtTime(iso)}`
 }

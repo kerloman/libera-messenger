@@ -63,7 +63,8 @@ type Action =
   | { type: 'MSG_DELETE'; chatId: string; messageId: number }
   | { type: 'REACTIONS'; chatId: string; messageId: number; reactions: Message['reactions'] }
   | { type: 'RECEIPT'; chatId: string; deliveredUpTo: number | null; readUpTo: number | null }
-  | { type: 'PRESENCE'; userId: string; online: boolean; lastSeen: string }
+  | { type: 'PRESENCE'; userId: string; online: boolean; lastSeen: string | null; lastSeenLabel?: string | null }
+  | { type: 'PRIVACY'; privacy: Me['privacy'] }
   | { type: 'TYPING'; chatId: string; on: boolean }
   | { type: 'ADMIN'; on: boolean }
   | { type: 'CALL'; call: CallUI | null }
@@ -200,10 +201,12 @@ function reducer(state: State, a: Action): State {
         ...state,
         chats: state.chats.map((c) =>
           c.peer.id === a.userId
-            ? { ...c, peer: { ...c.peer, online: a.online, lastSeenAt: a.lastSeen } }
+            ? { ...c, peer: { ...c.peer, online: a.online, lastSeenAt: a.lastSeen, lastSeenLabel: a.lastSeenLabel ?? null } }
             : c,
         ),
       }
+    case 'PRIVACY':
+      return state.me ? { ...state, me: { ...state.me, privacy: a.privacy } } : state
     case 'TYPING':
       return { ...state, chats: patchChat(state.chats, a.chatId, { typing: a.on }) }
     case 'ADMIN':
@@ -294,8 +297,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         dispatch({ type: 'REACTIONS', chatId, messageId, reactions }))
       s.on('receipt', ({ chatId, deliveredUpTo, readUpTo }) =>
         dispatch({ type: 'RECEIPT', chatId, deliveredUpTo, readUpTo }))
-      s.on('presence', ({ userId, online, lastSeen }) =>
-        dispatch({ type: 'PRESENCE', userId, online, lastSeen }))
+      s.on('presence', ({ userId, online, lastSeen, lastSeenLabel }) =>
+        dispatch({ type: 'PRESENCE', userId, online, lastSeen, lastSeenLabel }))
+      s.on('me:privacy', ({ privacy }) => dispatch({ type: 'PRIVACY', privacy }))
       s.on('typing', ({ chatId, on }) => {
         dispatch({ type: 'TYPING', chatId, on })
         window.clearTimeout(typingTimers.current[chatId])

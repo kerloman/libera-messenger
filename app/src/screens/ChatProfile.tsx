@@ -103,7 +103,7 @@ export function ChatProfile({ chat, onClose, onSearch }: { chat: Chat; onClose: 
       actions.toast('Report sent to moderators')
     })
 
-  const status = profile.online ? 'online' : fmtLastSeen(profile.lastSeenAt)
+  const status = profile.online ? 'online' : fmtLastSeen(profile.lastSeenAt, profile.lastSeenLabel)
   const tabs = (['photos', 'videos', 'files', 'voice', 'links'] as Tab[]).filter((t) => counts[t] > 0)
 
   return (

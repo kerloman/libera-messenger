@@ -9,6 +9,7 @@ import { Avatar } from '../ui/Avatar'
 import { Icon } from '../ui/Icons'
 import { Sheet } from '../ui/Sheet'
 import { Verified } from '../ui/Verified'
+import { Privacy } from './Privacy'
 
 type Session = { id: number; userAgent: string | null; createdAt: string; current: boolean }
 
@@ -18,6 +19,7 @@ export function Settings() {
   const p = state.prefs
   const [editOpen, setEditOpen] = useState(false)
   const [pwOpen, setPwOpen] = useState(false)
+  const [privacyOpen, setPrivacyOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [sessions, setSessions] = useState<Session[] | null>(null)
   const avatarInput = useRef<HTMLInputElement>(null)
@@ -162,7 +164,8 @@ export function Settings() {
           </Row>
         </Group>
 
-        <Group label="Security">
+        <Group label="Privacy & Security">
+          <Row icon="lock" tint="#0A84FF" label="Privacy & Security" sub="Last seen, online, read receipts, calls" chevron onClick={() => setPrivacyOpen(true)} />
           <Row icon="key" tint="#5E5CE6" label="Change password" chevron onClick={() => setPwOpen(true)} />
           {sessions?.map((s) => (
             <Row key={s.id} icon="devices" tint={s.current ? '#30C465' : '#8E8E93'}
@@ -210,6 +213,7 @@ export function Settings() {
 
       {editOpen && <EditProfile me={me} onClose={() => setEditOpen(false)} />}
       {pwOpen && <ChangePassword onClose={() => setPwOpen(false)} />}
+      {privacyOpen && <Privacy onClose={() => setPrivacyOpen(false)} />}
       {deleteOpen && <DeleteAccount onClose={() => setDeleteOpen(false)} />}
     </div>
   )

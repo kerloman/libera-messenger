@@ -7,8 +7,8 @@ import bcrypt from 'bcryptjs'
 import { db, audit, uploadsDir } from './db.js'
 import {
   COOKIE, RANK, authRequired, cookieOpts, createSession, destroySession, login,
-  meUser, parseCookies, publicUser, register, requestPasswordReset, requireRank,
-  resetPassword, sessionUser, validateRegistration, verifyEmail,
+  meUser, parseCookies, privacyOf, publicUser, register, requestPasswordReset, requireRank,
+  resetPassword, sessionUser, validateRegistration, verifyEmail, visibleUser,
 } from './auth.js'
 import { DELETE_PERIODS, purgeUser, scheduleDate } from './purge.js'
 
@@ -95,6 +95,11 @@ export function isContact(me, other) {
   return !!db.prepare('SELECT 1 FROM contacts WHERE owner_id = ? AND contact_id = ?').get(me, other)
 }
 
+// Viewer-aware serialization of another user, enforcing their privacy settings.
+export function viewOf(target, viewerId, rt) {
+  return visibleUser(target, viewerId, { isContact, isOnline: (id) => rt.isOnline(id) })
+}
+
 export function serializeChat(chat, forUserId, rt) {
   const peerId = chatMembers(chat.id).find((id) => id !== forUserId) ?? forUserId
   const peer = db.prepare('SELECT * FROM users WHERE id = ?').get(peerId)
@@ -111,11 +116,7 @@ export function serializeChat(chat, forUserId, rt) {
   return {
     id: chat.id,
     kind: chat.kind,
-    peer: {
-      ...publicUser(peer),
-      online: rt.isOnline(peerId),
-      status: peer.status,
-    },
+    peer: { ...viewOf(peer, forUserId, rt), status: peer.status },
     lastMessage: last ? serializeMessage(last) : null,
     unread,
     muted: !!my?.muted,
@@ -131,7 +132,7 @@ export function makeApi(rt) {
 
   // ---------- auth ----------
   r.post('/auth/register', authLimiter, (req, res) => {
-    const out = register(req.body ?? {}, req.headers['user-agent'])
+    const out = register(req.body ?? {}, req.headers['user-agent'], req.ip)
     if (out.error) return res.status(400).json({ error: out.error })
     res.setHeader('Set-Cookie', `${COOKIE}=${out.session}; ${cookieOpts()}`)
     res.json({ user: meUser(out.user), firstUser: out.firstUser })
@@ -146,7 +147,7 @@ export function makeApi(rt) {
   })
 
   r.post('/auth/login', authLimiter, (req, res) => {
-    const out = login(req.body ?? {}, req.headers['user-agent'])
+    const out = login(req.body ?? {}, req.headers['user-agent'], req.ip)
     if (out.error) return res.status(400).json({ error: out.error })
     res.setHeader('Set-Cookie', `${COOKIE}=${out.session}; ${cookieOpts()}`)
     res.json({ user: meUser(out.user) })
@@ -202,6 +203,45 @@ export function makeApi(rt) {
         credential: process.env.TURN_PASS,
       })
     res.json({ iceServers })
+  })
+
+  // ---------- privacy & security ----------
+  const VISIBILITY = ['everyone', 'contacts', 'nobody']
+  const LASTSEEN_MODES = ['exact', 'recently', 'week', 'month', 'long']
+  const PRIVACY_FIELDS = {
+    lastSeen: { col: 'privacy_last_seen', values: VISIBILITY },
+    lastSeenMode: { col: 'privacy_last_seen_mode', values: LASTSEEN_MODES },
+    online: { col: 'privacy_online', values: VISIBILITY },
+    photo: { col: 'privacy_photo', values: VISIBILITY },
+    bio: { col: 'privacy_bio', values: VISIBILITY },
+    email: { col: 'privacy_email', values: VISIBILITY },
+    calls: { col: 'privacy_calls', values: VISIBILITY },
+    readReceipts: { col: 'read_receipts', bool: true },
+    typingIndicator: { col: 'typing_indicator', bool: true },
+  }
+
+  r.patch('/me/privacy', (req, res) => {
+    const body = req.body ?? {}
+    const sets = []
+    const vals = []
+    for (const [key, spec] of Object.entries(PRIVACY_FIELDS)) {
+      if (body[key] === undefined) continue
+      if (spec.bool) {
+        sets.push(`${spec.col} = ?`)
+        vals.push(body[key] ? 1 : 0)
+      } else {
+        if (!spec.values.includes(body[key]))
+          return res.status(400).json({ error: `Invalid value for ${key}.` })
+        sets.push(`${spec.col} = ?`)
+        vals.push(body[key])
+      }
+    }
+    if (sets.length === 0) return res.status(400).json({ error: 'No valid privacy fields provided.' })
+    db.prepare(`UPDATE users SET ${sets.join(', ')} WHERE id = ?`).run(...vals, req.user.id)
+    const updated = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id)
+    // Push the change to this user's other logged-in devices for instant sync.
+    rt.emitToUser(req.user.id, 'me:privacy', { privacy: privacyOf(updated) })
+    res.json({ privacy: privacyOf(updated) })
   })
 
   r.patch('/me', (req, res) => {
@@ -323,7 +363,7 @@ export function makeApi(rt) {
     res.json({
       users: rows
         .filter((u) => !blockExists(req.user.id, u.id))
-        .map((u) => ({ ...publicUser(u), online: rt.isOnline(u.id) })),
+        .map((u) => viewOf(u, req.user.id, rt)),
     })
   })
 
@@ -341,16 +381,12 @@ export function makeApi(rt) {
       )
       .get(req.user.id, u.id)
     const blockedByMe = iBlocked(req.user.id, u.id)
-    // Presence and last-seen are hidden if either side blocked.
-    const visible = !blockExists(req.user.id, u.id)
+    // Block hides presence/last-seen entirely; otherwise privacy settings apply.
+    const view = blockExists(req.user.id, u.id)
+      ? { ...publicUser(u), avatar: null, online: false, lastSeenAt: null, lastSeenLabel: 'last seen recently' }
+      : viewOf(u, req.user.id, rt)
     res.json({
-      user: {
-        ...publicUser(u),
-        online: visible ? rt.isOnline(u.id) : false,
-        lastSeenAt: visible ? u.last_seen_at : null,
-        isContact: isContact(req.user.id, u.id),
-        blockedByMe,
-      },
+      user: { ...view, isContact: isContact(req.user.id, u.id), blockedByMe },
       chatId: chat?.id ?? null,
     })
   })
@@ -454,9 +490,19 @@ export function makeApi(rt) {
       `UPDATE chat_members SET last_read_id = MAX(last_read_id, ?), last_delivered_id = MAX(last_delivered_id, ?)
        WHERE chat_id = ? AND user_id = ?`,
     ).run(upTo, upTo, chatId, req.user.id)
+    // Read receipts are mutual: only shared if both the reader and the peer
+    // keep read receipts enabled. Delivered status is always sent.
+    const myRR = privacyOf(req.user).readReceipts
     for (const uid of chatMembers(chatId))
-      if (uid !== req.user.id)
-        rt.emitToUser(uid, 'receipt', { chatId, userId: req.user.id, readUpTo: upTo, deliveredUpTo: upTo })
+      if (uid !== req.user.id) {
+        const peer = db.prepare('SELECT * FROM users WHERE id = ?').get(uid)
+        const showRead = myRR && privacyOf(peer).readReceipts
+        rt.emitToUser(uid, 'receipt', {
+          chatId, userId: req.user.id,
+          readUpTo: showRead ? upTo : null,
+          deliveredUpTo: upTo,
+        })
+      }
     res.json({ ok: true })
   })
 
@@ -534,7 +580,7 @@ export function makeApi(rt) {
          WHERE c.owner_id = ? AND u.status = 'active' ORDER BY u.display_name COLLATE NOCASE`,
       )
       .all(req.user.id)
-    res.json({ contacts: rows.map((u) => ({ ...publicUser(u), online: rt.isOnline(u.id) })) })
+    res.json({ contacts: rows.map((u) => viewOf(u, req.user.id, rt)) })
   })
 
   r.post('/contacts', (req, res) => {
@@ -709,13 +755,39 @@ export function makeApi(rt) {
       )
       .all(q, q)
     const canSeeEmail = RANK[req.user.role] >= RANK.admin
+    // Admin override: real online status + exact last-seen regardless of the
+    // user's privacy settings (for moderation). Never exposed to normal users.
     res.json({
       users: rows.map((u) => ({
         ...publicUser(u),
         status: u.status,
         email: canSeeEmail ? u.email : null,
         emailVerified: !!u.email_verified,
+        realOnline: rt.isOnline(u.id),
+        realLastSeenAt: u.last_seen_at,
       })),
+    })
+  })
+
+  // Admin override detail: exact status + active sessions with device/platform/IP.
+  admin.get('/users/:id/security', (req, res) => {
+    const u = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id)
+    if (!u) return res.status(404).json({ error: 'User not found.' })
+    const sessions = db
+      .prepare('SELECT user_agent, ip, platform, created_at FROM sessions WHERE user_id = ? ORDER BY created_at DESC')
+      .all(u.id)
+    res.json({
+      online: rt.isOnline(u.id),
+      lastSeenAt: u.last_seen_at,
+      lastLoginAt: sessions[0]?.created_at ?? null,
+      activeSessions: sessions.length,
+      sessions: sessions.map((s) => ({
+        platform: s.platform ?? 'Unknown',
+        device: s.user_agent ?? 'Unknown device',
+        ip: s.ip ?? null,
+        createdAt: s.created_at,
+      })),
+      privacy: privacyOf(u),
     })
   })
 

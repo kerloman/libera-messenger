@@ -143,7 +143,7 @@ export function ChatView({ wide }: { wide?: boolean }) {
     ? 'typing…'
     : chat.peer.online
       ? 'online'
-      : fmtLastSeen(chat.peer.lastSeenAt)
+      : fmtLastSeen(chat.peer.lastSeenAt, chat.peer.lastSeenLabel)
 
   return (
     <div className={`chatview wp-${state.prefs.wallpaper}`}>

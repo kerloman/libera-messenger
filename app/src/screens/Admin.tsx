@@ -10,7 +10,11 @@ import { Verified } from '../ui/Verified'
 
 type Section = 'dashboard' | 'users' | 'reports' | 'logs'
 
-type AdminUser = User & { status: string; email: string | null; emailVerified: boolean }
+type AdminUser = User & { status: string; email: string | null; emailVerified: boolean; realOnline: boolean; realLastSeenAt: string | null }
+type SecurityDetail = {
+  online: boolean; lastSeenAt: string | null; lastLoginAt: string | null; activeSessions: number
+  sessions: { platform: string; device: string; ip: string | null; createdAt: string }[]
+}
 type Report = {
   id: number; reason: string; details: string; status: string; createdAt: string
   reporter: string; target: { id: string; username: string; displayName: string }
@@ -130,6 +134,7 @@ function Users({ meRole, onToast }: { meRole: string; onToast: (m: string) => vo
   const [q, setQ] = useState('')
   const [users, setUsers] = useState<AdminUser[] | null>(null)
   const [err, setErr] = useState<string | null>(null)
+  const [securityFor, setSecurityFor] = useState<AdminUser | null>(null)
 
   const load = useCallback(() => {
     api.get<{ users: AdminUser[] }>(`/admin/users?q=${encodeURIComponent(q)}`)
@@ -172,19 +177,20 @@ function Users({ meRole, onToast }: { meRole: string; onToast: (m: string) => vo
       </div>
       <table className="admin-table glass">
         <thead>
-          <tr><th>User</th>{isAdmin && <th>Email</th>}<th>Joined</th><th>Role</th><th>Status</th><th /></tr>
+          <tr><th>User</th>{isAdmin && <th>Email</th>}<th>Last active</th><th>Role</th><th>Status</th><th /></tr>
         </thead>
         <tbody>
           {users?.map((u) => (
             <tr key={u.id}>
               <td>
                 <div className="cell-user">
+                  <span className={`admin-dot${u.realOnline ? ' on' : ''}`} title={u.realOnline ? 'Online now' : 'Offline'} />
                   <Avatar name={u.displayName} seed={u.id} avatar={u.avatar} size={30} />
                   <div className="cell-2l"><span className="name-row"><span className="name-text">{u.displayName}</span>{u.verified && <Verified size={14} />}</span><small>@{u.username}</small></div>
                 </div>
               </td>
               {isAdmin && <td className="dim">{u.email}{u.emailVerified ? ' ✓' : ''}</td>}
-              <td className="dim">{fmtTime(u.createdAt)}</td>
+              <td className="dim">{u.realOnline ? 'online' : u.realLastSeenAt ? fmtTime(u.realLastSeenAt) : '—'}</td>
               <td>
                 {isAdmin && u.role !== 'owner' ? (
                   <select className="select glass" value={u.role}
@@ -197,6 +203,7 @@ function Users({ meRole, onToast }: { meRole: string; onToast: (m: string) => vo
               </td>
               <td><span className={`pill${u.status === 'active' ? ' ok' : u.status === 'deleted' ? '' : ' bad'}`}>{u.status}</span></td>
               <td className="row-actions">
+                <button className="table-btn" onClick={() => setSecurityFor(u)}>Sessions</button>
                 {u.status === 'active' && u.role !== 'owner' && (
                   <>
                     <button className="table-btn warn" onClick={() => act(u, { status: 'suspended' })}>Suspend</button>
@@ -215,6 +222,48 @@ function Users({ meRole, onToast }: { meRole: string; onToast: (m: string) => vo
         </tbody>
       </table>
       {users?.length === 0 && <div className="list-hint">No users match.</div>}
+      {securityFor && <SecurityModal user={securityFor} onClose={() => setSecurityFor(null)} />}
+    </div>
+  )
+}
+
+function SecurityModal({ user, onClose }: { user: AdminUser; onClose: () => void }) {
+  const [data, err] = useLoad<SecurityDetail>(`/admin/users/${user.id}/security`)
+  return (
+    <div className="overlay" onClick={onClose} style={{ zIndex: 200 }}>
+      <div className="sec-modal glass-panel" onClick={(e) => e.stopPropagation()}>
+        <div className="panel-head" style={{ justifyContent: 'space-between' }}>
+          <b>@{user.username} · security</b>
+          <button className="icon-btn" onClick={onClose}><Icon name="x" size={18} /></button>
+        </div>
+        {err && <div className="form-error">{err}</div>}
+        {!data ? <div className="list-hint">Loading…</div> : (
+          <>
+            <div className="sec-grid">
+              <div><small>Status</small><b className={data.online ? 'on' : ''}>{data.online ? 'Online now' : 'Offline'}</b></div>
+              <div><small>Exact last seen</small><b>{data.lastSeenAt ? fmtTime(data.lastSeenAt) : '—'}</b></div>
+              <div><small>Last login</small><b>{data.lastLoginAt ? fmtTime(data.lastLoginAt) : '—'}</b></div>
+              <div><small>Active sessions</small><b>{data.activeSessions}</b></div>
+            </div>
+            <div className="sec-note"><Icon name="shield" size={13} /> Moderation view — not visible to normal users.</div>
+            <div className="sec-sessions">
+              {data.sessions.map((s, i) => (
+                <div key={i} className="sec-session">
+                  <Icon name="devices" size={17} />
+                  <div className="sec-s-main">
+                    <b>{s.platform}</b>
+                    <small>{s.device}</small>
+                  </div>
+                  <div className="sec-s-meta">
+                    <span>{s.ip ?? 'ip n/a'}</span>
+                    <small>{fmtTime(s.createdAt)}</small>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
     </div>
   )
 }

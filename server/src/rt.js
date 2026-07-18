@@ -1,7 +1,7 @@
 import crypto from 'node:crypto'
 import { db, audit } from './db.js'
-import { COOKIE, parseCookies, publicUser, sessionUser } from './auth.js'
-import { chatMembers, isMember, blockExists } from './api.js'
+import { COOKIE, parseCookies, presenceFields, privacyOf, publicUser, sessionUser } from './auth.js'
+import { chatMembers, isMember, blockExists, isContact } from './api.js'
 
 // Realtime layer: presence, typing, delivery receipts, WebRTC call signaling.
 export function setupRealtime(io) {
@@ -45,10 +45,17 @@ export function setupRealtime(io) {
   }
 
   function broadcastPresence(userId, isOnline) {
-    const lastSeen = new Date().toISOString()
-    for (const cid of contactsOf(userId))
-      if (!blockExists(userId, cid))
-        rt.emitToUser(cid, 'presence', { userId, online: isOnline, lastSeen })
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId)
+    if (!user) return
+    const p = privacyOf(user)
+    const allow = (setting, viewerId) =>
+      setting === 'everyone' || (setting === 'contacts' && isContact(userId, viewerId))
+    for (const cid of contactsOf(userId)) {
+      if (blockExists(userId, cid)) continue
+      // Each recipient sees only what this user's privacy settings permit.
+      const fields = presenceFields(user, isOnline, allow(p.online, cid), allow(p.lastSeen, cid))
+      rt.emitToUser(cid, 'presence', { userId, ...fields })
+    }
   }
 
   io.use((socket, next) => {
@@ -90,6 +97,10 @@ export function setupRealtime(io) {
 
     socket.on('typing', ({ chatId, on }) => {
       if (typeof chatId !== 'string' || !isMember(chatId, me.id)) return
+      // Respect the sender's typing-indicator privacy toggle (read live, since
+      // the setting can change during a session).
+      const fresh = db.prepare('SELECT typing_indicator FROM users WHERE id = ?').get(me.id)
+      if (!privacyOf(fresh).typingIndicator) return
       for (const uid of chatMembers(chatId))
         if (uid !== me.id) rt.emitToUser(uid, 'typing', { chatId, userId: me.id, on: !!on })
     })
@@ -99,6 +110,12 @@ export function setupRealtime(io) {
       if (typeof chatId !== 'string' || !isMember(chatId, me.id)) return cb?.({ error: 'Not allowed.' })
       const calleeId = chatMembers(chatId).find((id) => id !== me.id)
       if (!calleeId) return cb?.({ error: 'No one to call.' })
+      // Enforce the callee's "who can call me" privacy setting.
+      const callee = db.prepare('SELECT * FROM users WHERE id = ?').get(calleeId)
+      const cp = privacyOf(callee).calls
+      const callAllowed = cp === 'everyone' || (cp === 'contacts' && isContact(calleeId, me.id))
+      if (!callAllowed || blockExists(me.id, calleeId))
+        return cb?.({ error: `${callee.display_name} doesn’t accept calls from you.` })
       const callId = crypto.randomUUID()
       db.prepare('INSERT INTO calls (id, chat_id, caller_id, callee_id, video) VALUES (?,?,?,?,?)')
         .run(callId, chatId, me.id, calleeId, video ? 1 : 0)

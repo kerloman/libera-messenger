@@ -27,13 +27,84 @@ export const publicUser = (u) => ({
   lastSeenAt: u.last_seen_at,
 })
 
+// Privacy preferences (with safe defaults for rows created before the columns).
+export function privacyOf(u) {
+  return {
+    lastSeen: u.privacy_last_seen ?? 'everyone',
+    lastSeenMode: u.privacy_last_seen_mode ?? 'exact',
+    online: u.privacy_online ?? 'everyone',
+    photo: u.privacy_photo ?? 'everyone',
+    bio: u.privacy_bio ?? 'everyone',
+    email: u.privacy_email ?? 'nobody',
+    calls: u.privacy_calls ?? 'everyone',
+    readReceipts: u.read_receipts == null ? true : !!u.read_receipts,
+    typingIndicator: u.typing_indicator == null ? true : !!u.typing_indicator,
+  }
+}
+
 export const meUser = (u) => ({
   ...publicUser(u),
   email: u.email,
   emailVerified: !!u.email_verified,
   status: u.status,
   deleteScheduledAt: u.delete_scheduled_at ?? null,
+  privacy: privacyOf(u),
 })
+
+const COARSE_LABEL = {
+  recently: 'last seen recently',
+  week: 'last seen within a week',
+  month: 'last seen within a month',
+  long: 'last seen a long time ago',
+}
+
+// Presence fields for a realtime event, honoring online/last-seen privacy.
+// `canOnline` / `canLast` are computed by the caller (relationship-aware).
+export function presenceFields(user, isOnline, canOnline, canLast) {
+  const p = privacyOf(user)
+  const onlineVisible = canOnline && isOnline
+  const out = { online: onlineVisible, lastSeen: null, lastSeenLabel: null }
+  if (!onlineVisible) {
+    if (canLast) {
+      if (p.lastSeenMode === 'exact') out.lastSeen = user.last_seen_at
+      else out.lastSeenLabel = COARSE_LABEL[p.lastSeenMode] ?? 'last seen recently'
+    } else {
+      out.lastSeenLabel = 'last seen recently'
+    }
+  }
+  return out
+}
+
+// A viewer-aware view of another user. `isContactFn(targetId, viewerId)` and
+// `isOnlineFn(id)` are injected to avoid an import cycle with api/rt.
+// This is where Last Seen / Online / Photo / Bio / Email privacy is ENFORCED —
+// hidden fields are simply never put in the response, so the API cannot leak them.
+export function visibleUser(target, viewerId, { isContact, isOnline }) {
+  const p = privacyOf(target)
+  const self = target.id === viewerId
+  const can = (setting) =>
+    self || setting === 'everyone' || (setting === 'contacts' && isContact(target.id, viewerId))
+
+  const online = can(p.online) && isOnline(target.id)
+  const base = {
+    ...publicUser(target),
+    avatar: can(p.photo) ? target.avatar : null,
+    bio: can(p.bio) ? target.bio : '',
+    email: can(p.email) ? target.email : null,
+    online,
+    lastSeenAt: null,
+    lastSeenLabel: null,
+  }
+  if (!online) {
+    if (can(p.lastSeen)) {
+      if (p.lastSeenMode === 'exact') base.lastSeenAt = target.last_seen_at
+      else base.lastSeenLabel = COARSE_LABEL[p.lastSeenMode] ?? 'last seen recently'
+    } else {
+      base.lastSeenLabel = 'last seen recently'
+    }
+  }
+  return base
+}
 
 // ---------- validation ----------
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
@@ -50,10 +121,20 @@ export function validateRegistration({ email, password, username, displayName })
 }
 
 // ---------- sessions ----------
-export function createSession(userId, userAgent) {
+export function platformOf(ua = '') {
+  if (/Electron/i.test(ua)) return /Windows/i.test(ua) ? 'Windows (Desktop)' : /Mac/i.test(ua) ? 'macOS (Desktop)' : 'Desktop'
+  if (/iPhone|iPad|iOS/i.test(ua)) return 'iOS'
+  if (/Android/i.test(ua)) return 'Android'
+  if (/Macintosh|Mac OS/i.test(ua)) return 'macOS (Web)'
+  if (/Windows/i.test(ua)) return 'Windows (Web)'
+  if (/Linux/i.test(ua)) return 'Linux (Web)'
+  return 'Web'
+}
+
+export function createSession(userId, userAgent, ip) {
   const t = token()
-  db.prepare('INSERT INTO sessions (token, user_id, user_agent, expires_at) VALUES (?,?,?,?)')
-    .run(t, userId, userAgent?.slice(0, 200) ?? null, days(SESSION_DAYS))
+  db.prepare('INSERT INTO sessions (token, user_id, user_agent, ip, platform, expires_at) VALUES (?,?,?,?,?,?)')
+    .run(t, userId, userAgent?.slice(0, 200) ?? null, ip ?? null, platformOf(userAgent), days(SESSION_DAYS))
   return t
 }
 
@@ -96,7 +177,7 @@ export function authRequired(req, res, next) {
 }
 
 // ---------- registration / login ----------
-export function register({ email, password, username, displayName }, userAgent) {
+export function register({ email, password, username, displayName }, userAgent, ip) {
   const err = validateRegistration({ email, password, username, displayName })
   if (err) return { error: err }
   if (db.prepare('SELECT 1 FROM users WHERE email = ?').get(email))
@@ -127,11 +208,11 @@ export function register({ email, password, username, displayName }, userAgent) 
   )
   audit(user.id, 'user.register', user.id, { username: user.username, role: user.role })
 
-  const session = createSession(user.id, userAgent)
+  const session = createSession(user.id, userAgent, ip)
   return { user: db.prepare('SELECT * FROM users WHERE id = ?').get(user.id), session, firstUser: isFirst }
 }
 
-export function login({ identifier, password }, userAgent) {
+export function login({ identifier, password }, userAgent, ip) {
   if (!identifier || !password) return { error: 'Enter your email/username and password.' }
   const u = db
     .prepare('SELECT * FROM users WHERE email = ? OR username = ?')
@@ -142,7 +223,7 @@ export function login({ identifier, password }, userAgent) {
   if (u.status === 'suspended') return { error: 'This account is suspended.' }
   if (u.status === 'deleted') return { error: 'Incorrect email/username or password.' }
   audit(u.id, 'user.login', u.id)
-  return { user: u, session: createSession(u.id, userAgent) }
+  return { user: u, session: createSession(u.id, userAgent, ip) }
 }
 
 export function verifyEmail(t) {
