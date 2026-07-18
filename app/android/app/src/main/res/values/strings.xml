@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Libera</string>
+    <string name="title_activity_main">Libera</string>
+    <string name="package_name">app.libera.messenger</string>
+    <string name="custom_url_scheme">app.libera.messenger</string>
+</resources>
