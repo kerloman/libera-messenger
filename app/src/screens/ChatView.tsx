@@ -10,6 +10,7 @@ import { Icon } from '../ui/Icons'
 import { Sheet } from '../ui/Sheet'
 import { Verified } from '../ui/Verified'
 import { ChatProfile } from './ChatProfile'
+import { play as playSound, haptic } from '../lib/sound'
 
 const quickReactions = ['❤️', '👍', '🔥', '😂', '😮', '🙏']
 
@@ -119,6 +120,7 @@ export function ChatView({ wide }: { wide?: boolean }) {
       rec.start()
       recorder.current = rec
       setRecording({ startedAt: Date.now() })
+      haptic('medium')
     })
 
   const stopRecording = (send: boolean) => {
@@ -290,6 +292,7 @@ export function ChatView({ wide }: { wide?: boolean }) {
                     const { reactions } = await api.post<{ reactions: Message['reactions'] }>(
                       `/messages/${selMsg.id}/reactions`, { emoji: e })
                     dispatch({ type: 'REACTIONS', chatId: chat.id, messageId: selMsg.id, reactions })
+                    playSound('messageReaction')
                     setSelected(null)
                   })
                 }

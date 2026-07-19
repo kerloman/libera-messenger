@@ -3,6 +3,7 @@
 import type { User } from '../data'
 import { api } from './api'
 import { getSocket } from './socket'
+import { play as playSound, startRing, stopRing } from './sound'
 
 export type CallPhase = 'incoming' | 'outgoing' | 'active'
 export type CallUI = {
@@ -94,22 +95,28 @@ export function initCallEngine(h: Hooks) {
     }
     pendingOffer = offer
     setUi({ callId, chatId, video, phase: 'incoming', peer: caller, muted: false, camOff: false, answeredAt: null })
+    startRing('ringIncoming')
   })
 
   s.on('call:accepted', async ({ answer }) => {
     if (!pc || !ui) return
     await pc.setRemoteDescription(answer).catch(() => {})
     await drainRemoteIce()
+    stopRing()
+    playSound('callConnected')
     setUi({ ...ui, phase: 'active', answeredAt: Date.now() })
   })
 
   s.on('call:declined', () => {
+    stopRing()
+    playSound('callDeclined')
     hooks?.onToast('Call declined')
     cleanup()
   })
 
   s.on('call:ended', () => {
-    if (ui) hooks?.onToast('Call ended')
+    stopRing()
+    if (ui) { playSound('callEnded'); hooks?.onToast('Call ended') }
     cleanup()
   })
 
@@ -129,11 +136,14 @@ export async function startCall(chatId: string, peer: CallUI['peer'], video: boo
     return
   }
   setUi({ callId: null, chatId, video, phase: 'outgoing', peer, muted: false, camOff: false, answeredAt: null })
+  startRing('ringOutgoing')
   const offer = await pc!.createOffer()
   await pc!.setLocalDescription(offer)
   getSocket()?.emit('call:invite', { chatId, video, offer }, (res: { callId?: string; error?: string }) => {
     if (!ui) return
     if (res?.error) {
+      stopRing()
+      playSound(res.error === 'offline' ? 'callMissed' : 'callFailed')
       hooks?.onToast(res.error === 'offline' ? `${peer.displayName} is offline — missed call logged` : res.error)
       cleanup()
       return
@@ -158,17 +168,22 @@ export async function acceptCall() {
   const answer = await pc!.createAnswer()
   await pc!.setLocalDescription(answer)
   getSocket()?.emit('call:accept', { callId: ui.callId, answer })
+  stopRing()
+  playSound('callConnected')
   setUi({ ...ui, phase: 'active', answeredAt: Date.now() })
 }
 
 export function declineCall() {
   if (!ui) return
+  stopRing()
   getSocket()?.emit('call:decline', { callId: ui.callId })
   cleanup()
 }
 
 export function endCall() {
   if (!ui) return
+  stopRing()
+  playSound('callEnded')
   if (ui.callId) getSocket()?.emit('call:end', { callId: ui.callId })
   cleanup()
 }

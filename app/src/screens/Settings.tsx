@@ -10,6 +10,7 @@ import { Icon } from '../ui/Icons'
 import { Sheet } from '../ui/Sheet'
 import { Verified } from '../ui/Verified'
 import { Privacy } from './Privacy'
+import { SoundsHaptics } from './SoundsHaptics'
 
 type Session = { id: number; userAgent: string | null; createdAt: string; current: boolean }
 
@@ -20,6 +21,7 @@ export function Settings() {
   const [editOpen, setEditOpen] = useState(false)
   const [pwOpen, setPwOpen] = useState(false)
   const [privacyOpen, setPrivacyOpen] = useState(false)
+  const [soundOpen, setSoundOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [sessions, setSessions] = useState<Session[] | null>(null)
   const avatarInput = useRef<HTMLInputElement>(null)
@@ -162,6 +164,7 @@ export function Settings() {
           <Row icon="bell" tint="#FF4D5E" label="Message notifications" sub="Browser notifications when Libera is in the background">
             <Toggle on={p.notifications} onChange={askNotifications} />
           </Row>
+          <Row icon="speaker" tint="#BF5AF2" label="Sounds & Haptics" sub="Branded sound identity, previews, vibration" chevron onClick={() => setSoundOpen(true)} />
         </Group>
 
         <Group label="Privacy & Security">
@@ -214,6 +217,7 @@ export function Settings() {
       {editOpen && <EditProfile me={me} onClose={() => setEditOpen(false)} />}
       {pwOpen && <ChangePassword onClose={() => setPwOpen(false)} />}
       {privacyOpen && <Privacy onClose={() => setPrivacyOpen(false)} />}
+      {soundOpen && <SoundsHaptics onClose={() => setSoundOpen(false)} />}
       {deleteOpen && <DeleteAccount onClose={() => setDeleteOpen(false)} />}
     </div>
   )

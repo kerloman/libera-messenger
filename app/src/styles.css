@@ -1383,3 +1383,25 @@ input:focus, textarea:focus, select:focus, button:focus { outline: none; }
 .sec-s-meta { display: flex; flex-direction: column; align-items: flex-end; }
 .sec-s-meta span { font-size: .78em; font-variant-numeric: tabular-nums; }
 .sec-s-meta small { font-size: .7em; color: var(--ink-3); }
+
+/* ============ sounds & haptics ============ */
+.sound-row-side { display: flex; align-items: center; gap: 8px; width: 100%; margin-top: 8px; }
+.mode-seg { flex: 1; }
+.mode-seg button { flex: 1; padding: 7px 4px; font-size: .78em; }
+.preview-btn {
+  width: 34px; height: 34px; border-radius: 11px; flex-shrink: 0;
+  display: grid; place-items: center; color: #fff;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+}
+.preview-btn svg { transform: rotate(0deg); }
+.preview-btn:active { transform: scale(.9); }
+.sound-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; padding: 10px; }
+.sound-chip {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 9px 11px; border-radius: 11px; font-size: .8em; font-weight: 550;
+  background: var(--hover); color: var(--ink); text-align: left;
+  transition: filter .15s var(--ease);
+}
+.sound-chip:hover { filter: brightness(1.06); }
+.sound-chip svg { color: var(--accent); flex-shrink: 0; }
+.sound-chip:active { transform: scale(.97); }

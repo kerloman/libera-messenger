@@ -6,6 +6,8 @@ import { api } from './lib/api'
 import { connectSocket, disconnectSocket, getSocket } from './lib/socket'
 import { initCallEngine } from './lib/calls'
 import type { CallUI } from './lib/calls'
+import { configureSound, defaultSoundSettings, play as playSound } from './lib/sound'
+import type { SoundSettings } from './lib/sound'
 
 export type Tab = 'chats' | 'calls' | 'settings'
 
@@ -15,6 +17,7 @@ export type Prefs = {
   fontScale: number
   wallpaper: string
   notifications: boolean
+  sound: SoundSettings
 }
 
 type State = {
@@ -37,11 +40,13 @@ const defaultPrefs: Prefs = {
   fontScale: 1,
   wallpaper: 'aurora',
   notifications: true,
+  sound: defaultSoundSettings,
 }
 
 function loadPrefs(): Prefs {
   try {
-    return { ...defaultPrefs, ...JSON.parse(localStorage.getItem('libera-prefs') ?? '{}') }
+    const saved = JSON.parse(localStorage.getItem('libera-prefs') ?? '{}')
+    return { ...defaultPrefs, ...saved, sound: { ...defaultSoundSettings, ...saved.sound, categories: { ...defaultSoundSettings.categories, ...saved.sound?.categories } } }
   } catch {
     return defaultPrefs
   }
@@ -278,11 +283,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         dispatch({ type: 'MSG_ADD', message })
         if (!known) refreshChats().catch(() => {})
         const st = stateRef.current
+        const chat = st.chats.find((c) => c.id === chatId)
+        if (!chat?.muted)
+          playSound(
+            message.kind === 'image' || message.kind === 'video' ? 'photoReceived'
+              : message.kind === 'file' ? 'fileReceived'
+              : message.kind === 'voice' ? 'voiceReceived'
+              : 'messageReceived',
+          )
         if (st.activeChat === chatId && document.visibilityState === 'visible') {
           api.post(`/chats/${chatId}/read`, { messageId: message.id }).catch(() => {})
           dispatch({ type: 'CHAT_PATCH', chatId, patch: { unread: 0 } })
         } else if (st.prefs.notifications && Notification?.permission === 'granted') {
-          const chat = st.chats.find((c) => c.id === chatId)
           if (!chat?.muted)
             new Notification(chat?.peer.displayName ?? 'New message', {
               body: message.body ?? 'Attachment',
@@ -363,6 +375,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         replyTo,
       })
       dispatch({ type: 'MSG_ADD', message })
+      playSound('messageSent')
     }
 
     const sendFile: Store['actions']['sendFile'] = async (chatId, file, opts = {}) => {
@@ -373,6 +386,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (opts.duration) form.append('duration', String(opts.duration))
       const { message } = await api.post<{ message: Message }>(`/chats/${chatId}/messages`, form)
       dispatch({ type: 'MSG_ADD', message })
+      playSound(message.kind === 'voice' ? 'voiceSent' : message.kind === 'file' ? 'fileSent' : 'photoSent')
     }
 
     return { afterLogin, logout, refreshChats, openChat, loadEarlier, sendText, sendFile, toast }
@@ -413,6 +427,22 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     mq.addEventListener('change', apply)
     return () => mq.removeEventListener('change', apply)
   }, [state.prefs.theme, state.prefs.accent, state.prefs.fontScale])
+
+  // keep the sound engine in sync with settings
+  useEffect(() => {
+    configureSound(state.prefs.sound)
+  }, [state.prefs.sound])
+
+  // unlock Web Audio on the first user gesture (browser autoplay policy)
+  useEffect(() => {
+    const unlock = () => import('./lib/sound').then((m) => m.unlockAudio())
+    window.addEventListener('pointerdown', unlock, { once: true })
+    window.addEventListener('keydown', unlock, { once: true })
+    return () => {
+      window.removeEventListener('pointerdown', unlock)
+      window.removeEventListener('keydown', unlock)
+    }
+  }, [])
 
   // unread count in the tab title
   useEffect(() => {
