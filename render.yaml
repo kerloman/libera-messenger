@@ -11,6 +11,8 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: NODE_VERSION
+        value: 22.17.0
       - key: SESSION_SECRET
         generateValue: true   # Render generates a strong random secret
     # --- Persistent storage (Starter plan and up) ---

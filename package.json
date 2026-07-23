@@ -4,7 +4,7 @@
   "description": "Libera — self-hosted cross-platform messenger. Speak freely.",
   "private": true,
   "license": "MIT",
-  "engines": { "node": ">=20" },
+  "engines": { "node": "22.x" },
   "scripts": {
     "build": "npm install --prefix server && npm install --prefix app && npm run build --prefix app",
     "start": "npm start --prefix server",
