@@ -29,3 +29,6 @@ dist/
 # desktop (Electron) build outputs
 desktop/release/
 desktop/node_modules/
+
+# JetBrains IDE files
+.idea/
