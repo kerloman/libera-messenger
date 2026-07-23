@@ -6,7 +6,7 @@
   "license": "MIT",
   "engines": { "node": "22.x" },
   "scripts": {
-    "build": "npm install --prefix server && npm install --prefix app && npm run build --prefix app",
+    "build": "npm install --include=dev --prefix server && npm install --include=dev --prefix app && npm run build --prefix app",
     "start": "npm start --prefix server",
     "test": "npm test --prefix server"
   }
