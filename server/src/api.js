@@ -195,14 +195,22 @@ export function makeApi(rt) {
   r.use(authRequired)
 
   r.get('/config', (_req, res) => {
-    const iceServers = [{ urls: 'stun:stun.l.google.com:19302' }]
-    if (process.env.TURN_URL)
-      iceServers.push({
-        urls: process.env.TURN_URL,
-        username: process.env.TURN_USER,
-        credential: process.env.TURN_PASS,
-      })
-    res.json({ iceServers })
+    // Several public STUN servers → far higher chance two peers on different
+    // networks discover a direct path (helps the "same Wi-Fi only" problem).
+    const iceServers = [
+      { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] },
+      { urls: 'stun:stun.cloudflare.com:3478' },
+    ]
+    // A TURN server relays media when a direct path is impossible (symmetric /
+    // mobile-carrier NAT). REQUIRED for reliable calls "from anywhere",
+    // especially on cellular. Set TURN_URL/TURN_USER/TURN_PASS in the
+    // environment (e.g. free credentials from metered.ca / Cloudflare).
+    if (process.env.TURN_URL) {
+      // TURN_URL may be a comma-separated list (udp/tcp/tls variants).
+      const urls = process.env.TURN_URL.split(',').map((u) => u.trim()).filter(Boolean)
+      iceServers.push({ urls, username: process.env.TURN_USER, credential: process.env.TURN_PASS })
+    }
+    res.json({ iceServers, hasTurn: !!process.env.TURN_URL })
   })
 
   // ---------- privacy & security ----------

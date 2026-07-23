@@ -332,11 +332,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       s.on('chat:new', ({ chat }: { chat: Chat }) => dispatch({ type: 'CHAT_UPSERT', chat }))
       s.on('chat:cleared', ({ chatId }: { chatId: string }) => dispatch({ type: 'MSGS_CLEAR', chatId }))
       s.on('chat:deleted', ({ chatId }: { chatId: string }) => dispatch({ type: 'CHAT_REMOVE', chatId }))
+      // A socket auth error can be transient — the server may have restarted,
+      // the network may have dropped, or a reconnect raced the cookie. Do NOT
+      // log the user out on it. Verify against the REST API first; only a real
+      // 401 there means the session is genuinely gone. Otherwise let Socket.IO
+      // keep reconnecting on its own.
       s.on('connect_error', (e) => {
-        if (e.message === 'unauthorized') {
-          disconnectSocket()
-          dispatch({ type: 'SET_ME', me: null })
-        }
+        if (e.message !== 'unauthorized') return
+        api.get('/auth/me')
+          .then(() => setTimeout(() => s.connect(), 1500)) // session fine → retry the socket
+          .catch((err) => {
+            if ((err as { status?: number })?.status === 401) {
+              disconnectSocket()
+              dispatch({ type: 'SET_ME', me: null })
+            }
+          })
       })
       initCallEngine({
         onCall: (call) => dispatch({ type: 'CALL', call }),
@@ -409,12 +419,22 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         await api.post('/auth/verify', { token: params.get('token') }).catch(() => {})
         history.replaceState(null, '', '/')
       }
-      try {
-        const { user } = await api.get<{ user: Me }>('/auth/me')
-        dispatch({ type: 'BOOT_DONE', me: user })
-        await actions.afterLogin(user)
-      } catch {
-        dispatch({ type: 'BOOT_DONE', me: null })
+      // Restore the session. A network error (e.g. a hosted server still waking
+      // up) must NOT drop us to the login screen — only a real 401 does. Retry
+      // a few times with backoff while the backend comes online.
+      for (let attempt = 0; ; attempt++) {
+        try {
+          const { user } = await api.get<{ user: Me }>('/auth/me')
+          dispatch({ type: 'BOOT_DONE', me: user })
+          await actions.afterLogin(user)
+          return
+        } catch (e) {
+          if ((e as { status?: number })?.status === 401 || attempt >= 4) {
+            dispatch({ type: 'BOOT_DONE', me: null })
+            return
+          }
+          await new Promise((r) => setTimeout(r, 1000 * (attempt + 1))) // 1s,2s,3s,4s
+        }
       }
     })()
   }, [actions])
