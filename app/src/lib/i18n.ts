@@ -235,6 +235,7 @@ const en = {
   newMessage: 'New message',
   noMessagesYet: 'No messages yet',
   photoPreview: 'Photo', videoPreview: 'Video', voicePreview: 'Voice message', filePreview: 'File',
+  download: 'Download', cantPlayHere: 'Tap to download',
 }
 
 type Dict = typeof en
@@ -436,6 +437,7 @@ const ru: Dict = {
   newMessage: 'Новое сообщение',
   noMessagesYet: 'Сообщений пока нет',
   photoPreview: 'Фото', videoPreview: 'Видео', voicePreview: 'Голосовое сообщение', filePreview: 'Файл',
+  download: 'Скачать', cantPlayHere: 'Нажмите, чтобы скачать',
 }
 
 const dicts: Record<Lang, Dict> = { en, ru }

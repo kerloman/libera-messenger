@@ -116,7 +116,11 @@ export function ChatView({ wide }: { wide?: boolean }) {
         return actions.toast(t('micDenied'))
       }
       recChunks.current = []
-      const rec = new MediaRecorder(stream)
+      // Pick the most broadly playable format the browser can record. Safari
+      // records mp4/AAC (plays everywhere); Chrome/Firefox fall back to opus.
+      const prefer = ['audio/mp4', 'audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus']
+      const mimeType = prefer.find((m) => { try { return MediaRecorder.isTypeSupported?.(m) } catch { return false } })
+      const rec = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
       rec.ondataavailable = (e) => e.data.size && recChunks.current.push(e.data)
       rec.start()
       recorder.current = rec
@@ -131,9 +135,11 @@ export function ChatView({ wide }: { wide?: boolean }) {
     rec.onstop = () => {
       rec.stream.getTracks().forEach((t) => t.stop())
       if (send && recChunks.current.length) {
-        const blob = new Blob(recChunks.current, { type: rec.mimeType || 'audio/webm' })
+        const mime = rec.mimeType || 'audio/webm'
+        const ext = mime.includes('mp4') ? 'm4a' : mime.includes('ogg') ? 'ogg' : 'webm'
+        const blob = new Blob(recChunks.current, { type: mime })
         const duration = (Date.now() - startedAt) / 1000
-        guard(() => actions.sendFile(chat.id, blob, { kind: 'voice', duration, name: 'voice-message.webm' }))
+        guard(() => actions.sendFile(chat.id, blob, { kind: 'voice', duration, name: `voice-message.${ext}` }))
       }
     }
     rec.stop()
@@ -401,6 +407,28 @@ function RecTimer({ startedAt }: { startedAt: number }) {
   return <span className="rec-time">{fmtDuration((Date.now() - startedAt) / 1000)}</span>
 }
 
+// Voice player with a graceful fallback: if the browser can't decode the
+// recorded codec (e.g. a friend's Chrome/opus recording opened in Safari),
+// show a download button instead of a broken/errored player.
+function VoiceMessage({ url, duration, name }: { url: string; duration: number | null | undefined; name?: string | null }) {
+  const [failed, setFailed] = useState(false)
+  if (failed) {
+    return (
+      <a className="file-msg" href={url} download={name ?? true} onClick={(e) => e.stopPropagation()}>
+        <div className="file-ic"><Icon name="mic" size={20} /></div>
+        <div className="file-info"><b>{t('voicePreview')}</b><span>{fmtDuration(duration)} · {t('cantPlayHere')}</span></div>
+        <Icon name="download" size={17} />
+      </a>
+    )
+  }
+  return (
+    <div className="voice" onClick={(e) => e.stopPropagation()}>
+      <audio src={url} controls preload="metadata" onError={() => setFailed(true)} />
+      <span className="dur">{fmtDuration(duration)}</span>
+    </div>
+  )
+}
+
 function linkify(text: string) {
   const parts = text.split(/(https?:\/\/\S+)/g)
   return parts.map((p, i) =>
@@ -452,10 +480,7 @@ function Bubble({
           <video className="media-img" src={m.attachment.url} controls preload="metadata" onClick={(e) => e.stopPropagation()} />
         )}
         {m.kind === 'voice' && m.attachment && (
-          <div className="voice" onClick={(e) => e.stopPropagation()}>
-            <audio src={m.attachment.url} controls preload="metadata" />
-            <span className="dur">{fmtDuration(m.attachment.duration)}</span>
-          </div>
+          <VoiceMessage url={m.attachment.url} duration={m.attachment.duration} name={m.attachment.name} />
         )}
         {m.kind === 'file' && m.attachment && (
           <a className="file-msg" href={m.attachment.url} download={m.attachment.name ?? true} onClick={(e) => e.stopPropagation()}>
