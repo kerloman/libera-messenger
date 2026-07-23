@@ -16,6 +16,22 @@ const MAX_FILE = 25 * 1024 * 1024
 const MAX_AVATAR = 5 * 1024 * 1024
 const ALLOWED_MIME = /^(image\/|video\/|audio\/|application\/(pdf|zip|json|x-zip-compressed|octet-stream)|text\/)/
 
+// TURN via Metered: fetch a fresh iceServers array and cache it ~50 min.
+// Needs METERED_API_KEY and METERED_DOMAIN (e.g. libera.metered.live).
+let turnCache = { at: 0, servers: null }
+async function meteredIce() {
+  const key = process.env.METERED_API_KEY
+  const domain = process.env.METERED_DOMAIN
+  if (!key || !domain) return null
+  if (turnCache.servers && Date.now() - turnCache.at < 50 * 60 * 1000) return turnCache.servers
+  const r = await fetch(`https://${domain}/api/v1/turn/credentials?apiKey=${encodeURIComponent(key)}`)
+  if (!r.ok) throw new Error('metered turn fetch failed: ' + r.status)
+  const servers = await r.json()
+  if (!Array.isArray(servers) || servers.length === 0) throw new Error('metered turn: empty response')
+  turnCache = { at: Date.now(), servers }
+  return servers
+}
+
 const upload = multer({
   storage: multer.diskStorage({
     destination: uploadsDir,
@@ -194,7 +210,7 @@ export function makeApi(rt) {
   // ---------- me ----------
   r.use(authRequired)
 
-  r.get('/config', (_req, res) => {
+  r.get('/config', async (_req, res) => {
     // Several public STUN servers → far higher chance two peers on different
     // networks discover a direct path (helps the "same Wi-Fi only" problem).
     const iceServers = [
@@ -202,15 +218,18 @@ export function makeApi(rt) {
       { urls: 'stun:stun.cloudflare.com:3478' },
     ]
     // A TURN server relays media when a direct path is impossible (symmetric /
-    // mobile-carrier NAT). REQUIRED for reliable calls "from anywhere",
-    // especially on cellular. Set TURN_URL/TURN_USER/TURN_PASS in the
-    // environment (e.g. free credentials from metered.ca / Cloudflare).
-    if (process.env.TURN_URL) {
-      // TURN_URL may be a comma-separated list (udp/tcp/tls variants).
+    // mobile-carrier NAT). REQUIRED for reliable calls "from anywhere".
+    // Two ways to configure it (either works):
+    //   1. Metered API key → fresh credentials fetched & cached automatically
+    //   2. Static TURN_URL / TURN_USER / TURN_PASS env vars
+    const metered = await meteredIce().catch(() => null)
+    if (metered) iceServers.push(...metered)
+    else if (process.env.TURN_URL) {
       const urls = process.env.TURN_URL.split(',').map((u) => u.trim()).filter(Boolean)
       iceServers.push({ urls, username: process.env.TURN_USER, credential: process.env.TURN_PASS })
     }
-    res.json({ iceServers, hasTurn: !!process.env.TURN_URL })
+    const hasTurn = iceServers.some((s) => String(s.urls).includes('turn'))
+    res.json({ iceServers, hasTurn })
   })
 
   // ---------- privacy & security ----------
