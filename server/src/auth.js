@@ -48,6 +48,7 @@ export const meUser = (u) => ({
   emailVerified: !!u.email_verified,
   status: u.status,
   deleteScheduledAt: u.delete_scheduled_at ?? null,
+  language: u.language ?? null,
   privacy: privacyOf(u),
 })
 

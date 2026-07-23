@@ -11,6 +11,7 @@ import { Sheet } from '../ui/Sheet'
 import { Verified } from '../ui/Verified'
 import { ChatProfile } from './ChatProfile'
 import { play as playSound, haptic } from '../lib/sound'
+import { t, tMatches } from '../lib/i18n'
 
 const quickReactions = ['❤️', '👍', '🔥', '😂', '😮', '🙏']
 
@@ -93,16 +94,16 @@ export function ChatView({ wide }: { wide?: boolean }) {
 
   const sendLocation = () => {
     setAttach(false)
-    if (!navigator.geolocation) return actions.toast('Location is not available in this browser')
+    if (!navigator.geolocation) return actions.toast(t('locationUnavailable'))
     navigator.geolocation.getCurrentPosition(
       (pos) =>
         guard(() =>
           actions.sendText(
             chat.id,
-            `📍 My location: https://www.openstreetmap.org/?mlat=${pos.coords.latitude.toFixed(5)}&mlon=${pos.coords.longitude.toFixed(5)}#map=16/${pos.coords.latitude.toFixed(5)}/${pos.coords.longitude.toFixed(5)}`,
+            `📍 ${t('myLocation')}: https://www.openstreetmap.org/?mlat=${pos.coords.latitude.toFixed(5)}&mlon=${pos.coords.longitude.toFixed(5)}#map=16/${pos.coords.latitude.toFixed(5)}/${pos.coords.longitude.toFixed(5)}`,
           ),
         ),
-      () => actions.toast('Location permission was denied'),
+      () => actions.toast(t('locationDenied')),
     )
   }
 
@@ -112,7 +113,7 @@ export function ChatView({ wide }: { wide?: boolean }) {
       try {
         stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       } catch {
-        return actions.toast('Microphone access was denied')
+        return actions.toast(t('micDenied'))
       }
       recChunks.current = []
       const rec = new MediaRecorder(stream)
@@ -142,9 +143,9 @@ export function ChatView({ wide }: { wide?: boolean }) {
 
   const selMsg = selected !== null ? msgs.find((m) => m.id === selected) : null
   const status = chat.typing
-    ? 'typing…'
+    ? t('typing')
     : chat.peer.online
-      ? 'online'
+      ? t('online')
       : fmtLastSeen(chat.peer.lastSeenAt, chat.peer.lastSeenLabel)
 
   return (
@@ -155,7 +156,7 @@ export function ChatView({ wide }: { wide?: boolean }) {
             <Icon name="back" size={22} />
           </button>
         )}
-        <button className="chat-title-btn" onClick={() => setShowProfile(true)} title="View profile">
+        <button className="chat-title-btn" onClick={() => setShowProfile(true)} title={t('profile')}>
           <Avatar name={chat.peer.displayName} seed={chat.peer.id} avatar={chat.peer.avatar} size={40} online={chat.peer.online} />
           <div className="chat-title">
             <span className="chat-name name-row">
@@ -168,13 +169,13 @@ export function ChatView({ wide }: { wide?: boolean }) {
           </div>
         </button>
         <div className="head-actions">
-          <button className="icon-btn" title="Search in conversation" onClick={() => setSearching((v) => !v)}>
+          <button className="icon-btn" title={t('searchInConversation')} onClick={() => setSearching((v) => !v)}>
             <Icon name="search" size={20} />
           </button>
-          <button className="icon-btn" title="Voice call" onClick={() => startCall(chat.id, chat.peer, false)}>
+          <button className="icon-btn" title={t('voiceCallTitle')} onClick={() => startCall(chat.id, chat.peer, false)}>
             <Icon name="phone" size={21} />
           </button>
-          <button className="icon-btn" title="Video call" onClick={() => startCall(chat.id, chat.peer, true)}>
+          <button className="icon-btn" title={t('videoCallTitle')} onClick={() => startCall(chat.id, chat.peer, true)}>
             <Icon name="video" size={22} />
           </button>
         </div>
@@ -183,7 +184,7 @@ export function ChatView({ wide }: { wide?: boolean }) {
       {searching && (
         <div className="in-chat-search glass">
           <Icon name="search" size={16} />
-          <input autoFocus placeholder="Search in this conversation" value={searchQ} onChange={(e) => setSearchQ(e.target.value)} />
+          <input autoFocus placeholder={t('searchInConversation')} value={searchQ} onChange={(e) => setSearchQ(e.target.value)} />
           <button className="icon-btn" onClick={() => { setSearching(false); setSearchQ('') }}><Icon name="x" size={16} /></button>
         </div>
       )}
@@ -194,17 +195,17 @@ export function ChatView({ wide }: { wide?: boolean }) {
             className="chip glass load-earlier"
             onClick={() => guard(async () => setCanLoadEarlier(await actions.loadEarlier(chat.id)))}
           >
-            Load earlier messages
+            {t('loadEarlier')}
           </button>
         )}
         {msgs.length === 0 && (
           <div className="e2e-note">
-            <Icon name="lock" size={12} /> This is the beginning of your conversation with {chat.peer.displayName}.
+            <Icon name="lock" size={12} /> {t('beginningOfConversation')} {chat.peer.displayName}.
           </div>
         )}
         {searching && searchQ.trim() && (
           <div className="search-count">
-            {msgs.filter((m) => m.body?.toLowerCase().includes(searchQ.toLowerCase())).length} match(es)
+            {tMatches(msgs.filter((m) => m.body?.toLowerCase().includes(searchQ.toLowerCase())).length)}
           </div>
         )}
         {msgs
@@ -232,8 +233,8 @@ export function ChatView({ wide }: { wide?: boolean }) {
           <div className="compose-context glass">
             <Icon name={editing ? 'pencil' : 'reply'} size={16} />
             <div className="cc-text">
-              <b>{editing ? 'Edit message' : 'Reply'}</b>
-              <span>{msgs.find((m) => m.id === (editing ?? replyTo))?.body ?? 'Attachment'}</span>
+              <b>{editing ? t('editMessage') : t('reply')}</b>
+              <span>{msgs.find((m) => m.id === (editing ?? replyTo))?.body ?? t('attachment')}</span>
             </div>
             <button className="icon-btn" onClick={() => { setReplyTo(null); setEditing(null); setText('') }}>
               <Icon name="x" size={16} />
@@ -245,11 +246,11 @@ export function ChatView({ wide }: { wide?: boolean }) {
           <div className="composer glass recording">
             <span className="rec-dot" />
             <RecTimer startedAt={recording.startedAt} />
-            <span className="rec-hint">Recording voice message…</span>
-            <button className="icon-btn" title="Cancel" onClick={() => stopRecording(false)}>
+            <span className="rec-hint">{t('recordingVoice')}</span>
+            <button className="icon-btn" title={t('cancel')} onClick={() => stopRecording(false)}>
               <Icon name="trash" size={20} />
             </button>
-            <button className="send-btn" title="Send" onClick={() => stopRecording(true)}>
+            <button className="send-btn" title={t('send')} onClick={() => stopRecording(true)}>
               <Icon name="send" size={19} stroke={2.2} />
             </button>
           </div>
@@ -257,7 +258,7 @@ export function ChatView({ wide }: { wide?: boolean }) {
           <div className="composer glass">
             <button className="icon-btn" onClick={() => setAttach(true)}><Icon name="plus" size={22} /></button>
             <input
-              placeholder="Message"
+              placeholder={t('messagePlaceholder')}
               value={text}
               onChange={(e) => { setText(e.target.value); emitTyping() }}
               onKeyDown={(e) => e.key === 'Enter' && doSend()}
@@ -267,7 +268,7 @@ export function ChatView({ wide }: { wide?: boolean }) {
                 <Icon name="send" size={19} stroke={2.2} />
               </button>
             ) : (
-              <button className="icon-btn mic" title="Record voice message" onClick={startRecording}>
+              <button className="icon-btn mic" title={t('attachVoice')} onClick={startRecording}>
                 <Icon name="mic" size={21} />
               </button>
             )}
@@ -303,20 +304,20 @@ export function ChatView({ wide }: { wide?: boolean }) {
           </div>
           <div className="sheet-actions">
             <button className="sheet-btn" onClick={() => { setReplyTo(selMsg.id); setEditing(null); setSelected(null) }}>
-              <Icon name="reply" size={20} /> Reply
+              <Icon name="reply" size={20} /> {t('reply')}
             </button>
             {selMsg.body && (
-              <button className="sheet-btn" onClick={() => { navigator.clipboard?.writeText(selMsg.body!); setSelected(null); actions.toast('Copied') }}>
-                <Icon name="file" size={19} /> Copy text
+              <button className="sheet-btn" onClick={() => { navigator.clipboard?.writeText(selMsg.body!); setSelected(null); actions.toast(t('copied')) }}>
+                <Icon name="file" size={19} /> {t('copyText')}
               </button>
             )}
             {selMsg.senderId === state.me?.id && selMsg.kind === 'text' && (
               <button className="sheet-btn" onClick={() => { setEditing(selMsg.id); setReplyTo(null); setText(selMsg.body ?? ''); setSelected(null) }}>
-                <Icon name="pencil" size={19} /> Edit
+                <Icon name="pencil" size={19} /> {t('edit')}
               </button>
             )}
             <button className="sheet-btn" onClick={() => { setForwarding(selMsg.id); setSelected(null) }}>
-              <Icon name="forward" size={20} /> Forward
+              <Icon name="forward" size={20} /> {t('forward')}
             </button>
             {selMsg.senderId === state.me?.id && (
               <button
@@ -329,7 +330,7 @@ export function ChatView({ wide }: { wide?: boolean }) {
                   })
                 }
               >
-                <Icon name="trash" size={20} /> Delete
+                <Icon name="trash" size={20} /> {t('delete')}
               </button>
             )}
           </div>
@@ -337,30 +338,30 @@ export function ChatView({ wide }: { wide?: boolean }) {
       )}
 
       {attach && (
-        <Sheet onClose={() => setAttach(false)} title="Share">
+        <Sheet onClose={() => setAttach(false)} title={t('share')}>
           <div className="attach-grid">
             <button className="attach-opt" onClick={() => sendPicked('image')}>
               <div className="attach-ic glass"><Icon name="photo" size={24} /></div>
-              <span>Photo / Video</span>
+              <span>{t('attachPhotoVideo')}</span>
             </button>
             <button className="attach-opt" onClick={() => sendPicked('any')}>
               <div className="attach-ic glass"><Icon name="file" size={24} /></div>
-              <span>File</span>
+              <span>{t('attachFile')}</span>
             </button>
             <button className="attach-opt" onClick={sendLocation}>
               <div className="attach-ic glass"><Icon name="mappin" size={24} /></div>
-              <span>Location</span>
+              <span>{t('attachLocation')}</span>
             </button>
             <button className="attach-opt" onClick={() => { setAttach(false); startRecording() }}>
               <div className="attach-ic glass"><Icon name="mic" size={24} /></div>
-              <span>Voice</span>
+              <span>{t('attachVoice')}</span>
             </button>
           </div>
         </Sheet>
       )}
 
       {forwarding !== null && (
-        <Sheet onClose={() => setForwarding(null)} title="Forward to…">
+        <Sheet onClose={() => setForwarding(null)} title={t('forwardTo')}>
           <div className="sheet-list">
             {state.chats.filter((c) => c.id !== chat.id).map((c) => (
               <button
@@ -371,7 +372,7 @@ export function ChatView({ wide }: { wide?: boolean }) {
                     const { message } = await api.post<{ message: Message }>(`/messages/${forwarding}/forward`, { chatId: c.id })
                     dispatch({ type: 'MSG_ADD', message })
                     setForwarding(null)
-                    actions.toast(`Forwarded to ${c.peer.displayName}`)
+                    actions.toast(`${t('forwardedTo')} ${c.peer.displayName}`)
                   })
                 }
               >
@@ -379,7 +380,7 @@ export function ChatView({ wide }: { wide?: boolean }) {
                 <div className="row-main"><span className="row-name">{c.peer.displayName}</span></div>
               </button>
             ))}
-            {state.chats.length <= 1 && <div className="list-hint">No other conversations yet.</div>}
+            {state.chats.length <= 1 && <div className="list-hint">{t('noOtherConversations')}</div>}
           </div>
         </Sheet>
       )}
@@ -428,7 +429,7 @@ function Bubble({
     return (
       <div className={`msg ${mine ? 'out' : 'in'}${first ? ' first' : ''}`}>
         <div className={`bubble ${mine ? 'out' : 'in'} deleted`}>
-          <span className="body"><Icon name="ban" size={13} /> Message deleted</span>
+          <span className="body"><Icon name="ban" size={13} /> {t('messageDeleted')}</span>
         </div>
       </div>
     )
@@ -439,8 +440,8 @@ function Bubble({
       <div className={`bubble ${mine ? 'out' : 'in'} t-${m.kind}`} onClick={onSelect}>
         {quoted && (
           <div className="quote">
-            <b>{quoted.senderId === state.me?.id ? 'You' : ''}</b>
-            <span>{quoted.deleted ? 'Deleted message' : quoted.body ?? 'Attachment'}</span>
+            <b>{quoted.senderId === state.me?.id ? t('you') : ''}</b>
+            <span>{quoted.deleted ? t('messageDeleted') : quoted.body ?? t('attachment')}</span>
           </div>
         )}
 
@@ -470,7 +471,7 @@ function Bubble({
         {m.body && <span className={m.kind === 'text' ? 'body' : 'caption'}>{linkify(m.body)}</span>}
 
         <span className="meta">
-          {m.edited && <i>edited</i>}
+          {m.edited && <i>{t('edited')}</i>}
           {fmtTime(m.createdAt)}
           {tick && (
             <Icon name={tick === 'sent' ? 'check' : 'checks'} size={14}

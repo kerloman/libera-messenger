@@ -4,6 +4,7 @@ import type { User } from '../data'
 import { api } from './api'
 import { getSocket } from './socket'
 import { play as playSound, startRing, stopRing } from './sound'
+import { t } from './i18n'
 
 export type CallPhase = 'incoming' | 'outgoing' | 'active'
 export type CallUI = {
@@ -58,7 +59,7 @@ async function makePeer(video: boolean) {
   try {
     streams.local = await navigator.mediaDevices.getUserMedia({ audio: true, video })
   } catch {
-    throw new Error(video ? 'Camera/microphone access was denied.' : 'Microphone access was denied.')
+    throw new Error(video ? t('camMicDenied') : t('micDeniedCall'))
   }
   streams.local.getTracks().forEach((t) => pc!.addTrack(t, streams.local!))
   pc.ontrack = (e) => {
@@ -110,13 +111,13 @@ export function initCallEngine(h: Hooks) {
   s.on('call:declined', () => {
     stopRing()
     playSound('callDeclined')
-    hooks?.onToast('Call declined')
+    hooks?.onToast(t('callDeclinedToast'))
     cleanup()
   })
 
   s.on('call:ended', () => {
     stopRing()
-    if (ui) { playSound('callEnded'); hooks?.onToast('Call ended') }
+    if (ui) { playSound('callEnded'); hooks?.onToast(t('callEndedToast')) }
     cleanup()
   })
 
@@ -144,7 +145,7 @@ export async function startCall(chatId: string, peer: CallUI['peer'], video: boo
     if (res?.error) {
       stopRing()
       playSound(res.error === 'offline' ? 'callMissed' : 'callFailed')
-      hooks?.onToast(res.error === 'offline' ? `${peer.displayName} is offline — missed call logged` : res.error)
+      hooks?.onToast(res.error === 'offline' ? `${peer.displayName} ${t('offlineMissedCall')}` : res.error)
       cleanup()
       return
     }
@@ -206,7 +207,7 @@ export async function switchCamera() {
   if (!pc || !streams.local) return
   const devices = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === 'videoinput')
   if (devices.length < 2) {
-    hooks?.onToast('Only one camera available')
+    hooks?.onToast(t('oneCameraOnly'))
     return
   }
   const current = streams.local.getVideoTracks()[0]

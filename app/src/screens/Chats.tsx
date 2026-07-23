@@ -8,6 +8,7 @@ import { Icon } from '../ui/Icons'
 import { Sheet } from '../ui/Sheet'
 import { Logo } from '../ui/Logo'
 import { Verified } from '../ui/Verified'
+import { t } from '../lib/i18n'
 
 export function Chats() {
   const { state, actions } = useStore()
@@ -51,15 +52,15 @@ export function Chats() {
     <div className="screen">
       <header className="screen-head">
         <div className="head-row">
-          <h1>Chats</h1>
-          <button className="icon-btn glass compose-btn" onClick={() => setPlusOpen(true)} title="New">
+          <h1>{t('chats')}</h1>
+          <button className="icon-btn glass compose-btn" onClick={() => setPlusOpen(true)} title={t('newMenu')}>
             <Icon name="plus" size={20} stroke={2.2} />
           </button>
         </div>
         <div className="search glass">
           <Icon name="search" size={17} />
           <input
-            placeholder="Search people by @username or name"
+            placeholder={t('searchPeople')}
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
@@ -78,9 +79,9 @@ export function Chats() {
 
         {q.trim().length >= 2 && (
           <>
-            <div className="list-label">People on Libera</div>
-            {searching && <div className="list-hint">Searching…</div>}
-            {!searching && found?.length === 0 && <div className="list-hint">No users found for “{q.trim()}”.</div>}
+            <div className="list-label">{t('peopleOnLibera')}</div>
+            {searching && <div className="list-hint">{t('searching')}</div>}
+            {!searching && found?.length === 0 && <div className="list-hint">{t('noUsersFoundFor')} “{q.trim()}”.</div>}
             {found?.map((u) => (
               <button key={u.id} className="row" onClick={() => setProfile(u)}>
                 <Avatar name={u.displayName} seed={u.id} avatar={u.avatar} size={48} online={u.online} />
@@ -100,8 +101,8 @@ export function Chats() {
         {state.chats.length === 0 && !q.trim() && (
           <div className="empty-list">
             <Logo size={64} />
-            <p><b>No conversations yet</b></p>
-            <span>Search for a friend by <b>@username</b> above to start your first chat. Messages are private between you and them.</span>
+            <p><b>{t('noConversations')}</b></p>
+            <span>{t('emptyChatsHint')}</span>
           </div>
         )}
       </div>
@@ -109,19 +110,19 @@ export function Chats() {
       {profile && <ProfileSheet user={profile} onClose={() => setProfile(null)} />}
 
       {plusOpen && (
-        <Sheet onClose={() => setPlusOpen(false)} title="New">
+        <Sheet onClose={() => setPlusOpen(false)} title={t('newMenu')}>
           <div className="sheet-actions">
             {([
-              { icon: 'chat', label: 'New Chat', sub: 'Message a person', ready: true, act: () => { setPlusOpen(false); setNewChat(true) } },
-              { icon: 'users', label: 'New Group', sub: 'Coming soon', ready: false },
-              { icon: 'speaker', label: 'New Channel', sub: 'Coming soon', ready: false },
-              { icon: 'sparkles', label: 'New Bot', sub: 'Coming soon', ready: false },
-              { icon: 'photo', label: 'New Story', sub: 'Coming soon', ready: false },
+              { icon: 'chat', label: t('newChat'), sub: t('newChatSub'), ready: true, act: () => { setPlusOpen(false); setNewChat(true) } },
+              { icon: 'users', label: t('newGroup'), sub: t('comingSoon'), ready: false },
+              { icon: 'speaker', label: t('newChannel'), sub: t('comingSoon'), ready: false },
+              { icon: 'sparkles', label: t('newBot'), sub: t('comingSoon'), ready: false },
+              { icon: 'photo', label: t('newStory'), sub: t('comingSoon'), ready: false },
             ] as const).map((o) => (
               <button
                 key={o.label}
                 className={`sheet-btn plus-item${o.ready ? '' : ' soon'}`}
-                onClick={() => o.ready ? o.act() : actions.toast(`${o.label} is coming in a future update`)}
+                onClick={() => o.ready ? o.act() : actions.toast(`${o.label} ${t('comingSoonToast')}`)}
               >
                 <Icon name={o.icon} size={20} />
                 <div className="plus-text"><b>{o.label}</b><small>{o.sub}</small></div>
@@ -133,7 +134,7 @@ export function Chats() {
       )}
 
       {newChat && (
-        <Sheet onClose={() => setNewChat(false)} title="New Chat">
+        <Sheet onClose={() => setNewChat(false)} title={t('newChat')}>
           <NewChatSearch onPick={(u) => { setNewChat(false); setProfile(u) }} />
         </Sheet>
       )}
@@ -154,9 +155,9 @@ function ChatRow({ chat, onOpen }: { chat: Chat; onOpen: () => void }) {
           {chat.peer.verified && <Verified size={15} />}
         </span>
         <span className={`row-preview${chat.typing ? ' typing' : ''}`}>
-          {chat.typing ? 'typing…' : (
+          {chat.typing ? t('typing') : (
             <>
-              {mine && last && <span className="you">You: </span>}
+              {mine && last && <span className="you">{t('you')}: </span>}
               {preview(last)}
             </>
           )}
@@ -198,7 +199,7 @@ export function ProfileSheet({ user, onClose }: { user: User; onClose: () => voi
   const sendReport = async () => {
     try {
       await api.post('/reports', { username: user.username, reason: reportReason })
-      actions.toast('Report sent to the moderation team')
+      actions.toast(t('reportSentModeration'))
       setReporting(false)
     } catch (e) {
       actions.toast((e as Error).message)
@@ -212,22 +213,22 @@ export function ProfileSheet({ user, onClose }: { user: User; onClose: () => voi
         <b className="name-row"><span className="name-text">{user.displayName}</span>{user.verified && <Verified size={18} />}</b>
         <span className="uname">@{user.username}</span>
         {user.bio && <p className="bio">{user.bio}</p>}
-        <span className="presence">{user.online ? 'online' : fmtLastSeen(user.lastSeenAt)}</span>
+        <span className="presence">{user.online ? t('online') : fmtLastSeen(user.lastSeenAt, user.lastSeenLabel)}</span>
         {user.id !== state.me?.id && (
           <div className="profile-actions">
             <button className="btn primary" disabled={busy} onClick={startChat}>
-              <Icon name="chat" size={18} /> Message
+              <Icon name="chat" size={18} /> {t('message')}
             </button>
             {!reporting ? (
               <button className="btn glass danger-text" onClick={() => setReporting(true)}>
-                <Icon name="flag" size={17} /> Report
+                <Icon name="flag" size={17} /> {t('report')}
               </button>
             ) : (
               <div className="report-form">
                 <select className="select glass" value={reportReason} onChange={(e) => setReportReason(e.target.value)}>
-                  {['Spam', 'Abuse', 'Impersonation', 'Other'].map((r) => <option key={r}>{r}</option>)}
+                  {([['Spam', t('reasonSpam')], ['Abuse', t('reasonAbuse')], ['Impersonation', t('reasonImpersonation')], ['Other', t('reasonOther')]] as const).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                 </select>
-                <button className="btn glass" onClick={sendReport}>Send report</button>
+                <button className="btn glass" onClick={sendReport}>{t('sendReport')}</button>
               </div>
             )}
           </div>
@@ -259,19 +260,19 @@ function NewChatSearch({ onPick }: { onPick: (u: User) => void }) {
   }, [q])
 
   const list = q.trim().length >= 2 ? users : contacts
-  const label = q.trim().length >= 2 ? 'Search results' : 'Contacts'
+  const label = q.trim().length >= 2 ? t('searchResults') : t('contacts')
 
   return (
     <>
       <div className="search glass" style={{ marginBottom: 10 }}>
         <Icon name="search" size={16} />
-        <input autoFocus placeholder="Search by @username or name" value={q} onChange={(e) => setQ(e.target.value)} />
+        <input autoFocus placeholder={t('searchByUsername')} value={q} onChange={(e) => setQ(e.target.value)} />
       </div>
       <div className="sheet-list">
         <div className="list-label" style={{ paddingLeft: 4 }}>{label}</div>
-        {busy && <div className="list-hint">Searching…</div>}
+        {busy && <div className="list-hint">{t('searching')}</div>}
         {list?.length === 0 && !busy && (
-          <div className="list-hint">{q.trim().length >= 2 ? 'No users found.' : 'No contacts yet — search to find people.'}</div>
+          <div className="list-hint">{q.trim().length >= 2 ? t('noUsersFound') : t('noContactsYet')}</div>
         )}
         {list?.map((u) => (
           <button key={u.id} className="row" onClick={() => onPick(u)}>

@@ -4,6 +4,7 @@ import type { Me } from '../data'
 import { useStore } from '../store'
 import { Icon } from '../ui/Icons'
 import { Logo } from '../ui/Logo'
+import { t, translateServer } from '../lib/i18n'
 
 type Step = 'login' | 'register' | 'forgot' | 'reset'
 
@@ -87,7 +88,7 @@ export function Auth() {
   const doForgot = () =>
     run(async () => {
       await api.post('/auth/request-reset', { email: forgotEmail })
-      setInfo('If an account exists for that email, a reset link has been sent.')
+      setInfo(t('resetSent'))
     })
 
   const doReset = () =>
@@ -95,7 +96,7 @@ export function Auth() {
       await api.post('/auth/reset', { token: resetToken, password: newPassword })
       history.replaceState(null, '', '/')
       setStep('login')
-      setInfo('Password updated — sign in with your new password.')
+      setInfo(t('passwordUpdated'))
     })
 
   return (
@@ -104,7 +105,7 @@ export function Auth() {
         <div className="auth-hero">
           <Logo size={92} animate />
           <h1>Libera</h1>
-          <p className="tagline">Speak freely.</p>
+          <p className="tagline">{t('tagline')}</p>
         </div>
 
         {error && <div className="form-error">{error}</div>}
@@ -115,7 +116,7 @@ export function Auth() {
             <div className="field glass">
               <Icon name="person" size={18} />
               <input
-                placeholder="Email or username"
+                placeholder={t('emailOrUsername')}
                 value={identifier}
                 autoComplete="username"
                 onChange={(e) => setIdentifier(e.target.value)}
@@ -125,7 +126,7 @@ export function Auth() {
               <Icon name="key" size={18} />
               <input
                 type="password"
-                placeholder="Password"
+                placeholder={t('password')}
                 value={password}
                 autoComplete="current-password"
                 onChange={(e) => setPassword(e.target.value)}
@@ -133,11 +134,11 @@ export function Auth() {
               />
             </div>
             <button className="btn primary" disabled={busy || !identifier || !password} onClick={doLogin}>
-              {busy ? 'Signing in…' : 'Sign in'}
+              {busy ? t('signingIn') : t('signIn')}
             </button>
-            <button className="link-btn" onClick={() => setStep('forgot')}>Forgot password?</button>
-            <div className="divider"><span>new here?</span></div>
-            <button className="btn glass" onClick={() => setStep('register')}>Create an account</button>
+            <button className="link-btn" onClick={() => setStep('forgot')}>{t('forgotPassword')}</button>
+            <div className="divider"><span>{t('newHere')}</span></div>
+            <button className="btn glass" onClick={() => setStep('register')}>{t('createAnAccount')}</button>
           </div>
         )}
 
@@ -145,30 +146,30 @@ export function Auth() {
           <div className="auth-actions">
             <div className="field glass">
               <Icon name="person" size={18} />
-              <input placeholder="Email" type="email" autoComplete="email"
+              <input placeholder={t('email')} type="email" autoComplete="email"
                      value={email} onChange={(e) => setEmail(e.target.value)} />
             </div>
             <div className="field glass">
               <span className="at">@</span>
-              <input placeholder="Username (unique)" autoComplete="off" value={username}
+              <input placeholder={t('usernameUnique')} autoComplete="off" value={username}
                      onChange={(e) => setUsername(e.target.value.replace(/\s/g, ''))} />
               {username && nameCheck && (
                 <span className={`avail ${nameCheck.available ? 'ok' : 'bad'}`}>
-                  {nameCheck.available ? 'available' : 'taken'}
+                  {nameCheck.available ? t('available') : t('taken')}
                 </span>
               )}
             </div>
             {username && nameCheck && !nameCheck.available && nameCheck.reason && (
-              <p className="field-hint">{nameCheck.reason}</p>
+              <p className="field-hint">{translateServer(nameCheck.reason)}</p>
             )}
             <div className="field glass">
               <Icon name="pencil" size={17} />
-              <input placeholder="Display name" value={displayName}
+              <input placeholder={t('displayName')} value={displayName}
                      onChange={(e) => setDisplayName(e.target.value)} />
             </div>
             <div className="field glass">
               <Icon name="key" size={18} />
-              <input type="password" placeholder="Password (min 8 characters)" autoComplete="new-password"
+              <input type="password" placeholder={t('passwordMin8')} autoComplete="new-password"
                      value={regPassword} onChange={(e) => setRegPassword(e.target.value)} />
             </div>
             <button
@@ -176,50 +177,50 @@ export function Auth() {
               disabled={busy || !email || !username || !displayName || regPassword.length < 8 || nameCheck?.available === false}
               onClick={doRegister}
             >
-              {busy ? 'Creating account…' : 'Create account'}
+              {busy ? t('creatingAccount') : t('createAccount')}
             </button>
             <p className="auth-note">
-              <Icon name="info" size={13} /> You can add a profile photo in Settings after signing up.
+              <Icon name="info" size={13} /> {t('photoAfterSignup')}
             </p>
-            <button className="link-btn" onClick={() => setStep('login')}>I already have an account</button>
+            <button className="link-btn" onClick={() => setStep('login')}>{t('haveAccount')}</button>
           </div>
         )}
 
         {step === 'forgot' && (
           <div className="auth-actions">
-            <p className="auth-sub">Enter your account email and we’ll send a password reset link.</p>
+            <p className="auth-sub">{t('forgotIntro')}</p>
             <div className="field glass">
               <Icon name="person" size={18} />
-              <input placeholder="Email" type="email" value={forgotEmail}
+              <input placeholder={t('email')} type="email" value={forgotEmail}
                      onChange={(e) => setForgotEmail(e.target.value)} />
             </div>
             <button className="btn primary" disabled={busy || !forgotEmail} onClick={doForgot}>
-              Send reset link
+              {t('sendResetLink')}
             </button>
-            <button className="link-btn" onClick={() => setStep('login')}>Back to sign in</button>
+            <button className="link-btn" onClick={() => setStep('login')}>{t('backToSignIn')}</button>
           </div>
         )}
 
         {step === 'reset' && (
           <div className="auth-actions">
-            <p className="auth-sub">Choose a new password for your account.</p>
+            <p className="auth-sub">{t('resetIntro')}</p>
             <div className="field glass">
               <Icon name="key" size={18} />
-              <input type="password" placeholder="New password (min 8 characters)" value={newPassword}
+              <input type="password" placeholder={t('newPasswordMin8')} value={newPassword}
                      onChange={(e) => setNewPassword(e.target.value)} />
             </div>
             <button className="btn primary" disabled={busy || newPassword.length < 8} onClick={doReset}>
-              Set new password
+              {t('setNewPassword')}
             </button>
             <button className="link-btn" onClick={() => { history.replaceState(null, '', '/'); setStep('login') }}>
-              Back to sign in
+              {t('backToSignIn')}
             </button>
           </div>
         )}
       </div>
 
       <p className="auth-foot">
-        <Icon name="lock" size={12} /> TLS-encrypted · your data stays on your server
+        <Icon name="lock" size={12} /> {t('authFoot')}
       </p>
     </div>
   )

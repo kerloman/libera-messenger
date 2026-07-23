@@ -8,6 +8,8 @@ import { initCallEngine } from './lib/calls'
 import type { CallUI } from './lib/calls'
 import { configureSound, defaultSoundSettings, play as playSound } from './lib/sound'
 import type { SoundSettings } from './lib/sound'
+import { resolveLang, setLang, t } from './lib/i18n'
+import type { LangPref } from './lib/i18n'
 
 export type Tab = 'chats' | 'calls' | 'settings'
 
@@ -17,6 +19,7 @@ export type Prefs = {
   fontScale: number
   wallpaper: string
   notifications: boolean
+  language: LangPref
   sound: SoundSettings
 }
 
@@ -40,6 +43,7 @@ const defaultPrefs: Prefs = {
   fontScale: 1,
   wallpaper: 'aurora',
   notifications: true,
+  language: 'auto',
   sound: defaultSoundSettings,
 }
 
@@ -296,8 +300,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           dispatch({ type: 'CHAT_PATCH', chatId, patch: { unread: 0 } })
         } else if (st.prefs.notifications && Notification?.permission === 'granted') {
           if (!chat?.muted)
-            new Notification(chat?.peer.displayName ?? 'New message', {
-              body: message.body ?? 'Attachment',
+            new Notification(chat?.peer.displayName ?? t('newMessage'), {
+              body: message.body ?? t('attachment'),
               icon: '/favicon.svg',
             })
         }
@@ -312,6 +316,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       s.on('presence', ({ userId, online, lastSeen, lastSeenLabel }) =>
         dispatch({ type: 'PRESENCE', userId, online, lastSeen, lastSeenLabel }))
       s.on('me:privacy', ({ privacy }) => dispatch({ type: 'PRIVACY', privacy }))
+      s.on('me:language', ({ language }: { language: string | null }) => {
+        const me = stateRef.current.me
+        if (me) dispatch({ type: 'SET_ME', me: { ...me, language } })
+      })
       s.on('typing', ({ chatId, on }) => {
         dispatch({ type: 'TYPING', chatId, on })
         window.clearTimeout(typingTimers.current[chatId])
@@ -447,8 +455,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   // unread count in the tab title
   useEffect(() => {
     const unread = state.chats.reduce((s, c) => s + c.unread, 0)
-    document.title = unread > 0 ? `(${unread}) Libera` : 'Libera — Speak freely'
+    document.title = unread > 0 ? `(${unread}) Libera` : t('appTitle')
   }, [state.chats])
+
+  // Resolve the language synchronously so every t() call in this render pass
+  // (account choice > local pref > system) is already correct.
+  setLang(resolveLang(state.me?.language, state.prefs.language))
 
   const store = useMemo(() => ({ state, dispatch, actions }), [state, actions])
   return <Ctx.Provider value={store}>{children}</Ctx.Provider>

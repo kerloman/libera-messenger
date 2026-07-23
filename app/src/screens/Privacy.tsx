@@ -4,19 +4,20 @@ import type { LastSeenMode, Privacy as PrivacyT, Visibility } from '../data'
 import { api } from '../lib/api'
 import { useStore } from '../store'
 import { Icon } from '../ui/Icons'
+import { t } from '../lib/i18n'
 
-const VIS: { value: Visibility; label: string }[] = [
-  { value: 'everyone', label: 'Everyone' },
-  { value: 'contacts', label: 'My Contacts' },
-  { value: 'nobody', label: 'Nobody' },
+const VIS = (): { value: Visibility; label: string }[] => [
+  { value: 'everyone', label: t('everyone') },
+  { value: 'contacts', label: t('myContacts') },
+  { value: 'nobody', label: t('nobody') },
 ]
 
-const LASTSEEN_MODES: { value: LastSeenMode; label: string }[] = [
-  { value: 'exact', label: 'Show exact time' },
-  { value: 'recently', label: 'Last seen recently' },
-  { value: 'week', label: 'Last seen within a week' },
-  { value: 'month', label: 'Last seen within a month' },
-  { value: 'long', label: 'Last seen a long time ago' },
+const LASTSEEN_MODES = (): { value: LastSeenMode; label: string }[] => [
+  { value: 'exact', label: t('showExactTime') },
+  { value: 'recently', label: t('lastSeenRecently') },
+  { value: 'week', label: t('lastSeenWeek') },
+  { value: 'month', label: t('lastSeenMonth') },
+  { value: 'long', label: t('lastSeenLong') },
 ]
 
 export function Privacy({ onClose }: { onClose: () => void }) {
@@ -41,50 +42,47 @@ export function Privacy({ onClose }: { onClose: () => void }) {
       <div className="profile-page glass-panel" onClick={(e) => e.stopPropagation()}>
         <header className="pp-head">
           <button className="icon-btn" onClick={onClose}><Icon name="back" size={22} /></button>
-          <span className="pp-head-title">Privacy &amp; Security</span>
+          <span className="pp-head-title">{t('privacySecurity')}</span>
         </header>
 
         <div className="pp-scroll priv-scroll">
           <p className="priv-intro">
-            Control who can see your information and status. These rules are enforced on
-            the server — hidden details are never sent to people who aren’t allowed to see them.
+            {t('privacyIntro')}
           </p>
 
-          <Group label="Last Seen & Online">
-            <VisRow icon="eye" tint="#32ADE6" label="Last seen" value={p.lastSeen} onChange={(v) => save({ lastSeen: v })} />
+          <Group label={t('lastSeenOnline')}>
+            <VisRow icon="eye" tint="#32ADE6" label={t('lastSeenLabel')} value={p.lastSeen} onChange={(v) => save({ lastSeen: v })} />
             {p.lastSeen !== 'nobody' && (
               <SelectRow
-                icon="clock" tint="#5E5CE6" label="Last seen precision"
+                icon="clock" tint="#5E5CE6" label={t('lastSeenPrecision')}
                 value={p.lastSeenMode}
-                options={LASTSEEN_MODES}
+                options={LASTSEEN_MODES()}
                 onChange={(v) => save({ lastSeenMode: v as LastSeenMode })}
               />
             )}
-            <VisRow icon="wave" tint="#30C465" label="Online status" value={p.online} onChange={(v) => save({ online: v })} />
+            <VisRow icon="wave" tint="#30C465" label={t('onlineStatus')} value={p.online} onChange={(v) => save({ online: v })} />
           </Group>
 
-          <Group label="Profile">
-            <VisRow icon="photo" tint="#FF9F0A" label="Profile photo" value={p.photo} onChange={(v) => save({ photo: v })} />
-            <VisRow icon="info" tint="#BF5AF2" label="Bio" value={p.bio} onChange={(v) => save({ bio: v })} />
-            <VisRow icon="person" tint="#FF6B4A" label="Email address" value={p.email} onChange={(v) => save({ email: v })} />
+          <Group label={t('profile')}>
+            <VisRow icon="photo" tint="#FF9F0A" label={t('profilePhoto')} value={p.photo} onChange={(v) => save({ photo: v })} />
+            <VisRow icon="info" tint="#BF5AF2" label={t('bio')} value={p.bio} onChange={(v) => save({ bio: v })} />
+            <VisRow icon="person" tint="#FF6B4A" label={t('emailAddress')} value={p.email} onChange={(v) => save({ email: v })} />
           </Group>
 
-          <Group label="Calls & Messaging">
-            <VisRow icon="phone" tint="#30C465" label="Who can call me" value={p.calls} onChange={(v) => save({ calls: v })} />
-            <ToggleRow icon="checks" tint="#4D7CFE" label="Read receipts"
-                       sub="If off, you won’t send or receive read receipts"
+          <Group label={t('callsMessaging')}>
+            <VisRow icon="phone" tint="#30C465" label={t('whoCanCall')} value={p.calls} onChange={(v) => save({ calls: v })} />
+            <ToggleRow icon="checks" tint="#4D7CFE" label={t('readReceipts')}
+                       sub={t('readReceiptsSub')}
                        on={p.readReceipts} onChange={(v) => save({ readReceipts: v })} />
-            <ToggleRow icon="pencil" tint="#FF9F0A" label="Typing indicator"
-                       sub="Let others see when you’re typing"
+            <ToggleRow icon="pencil" tint="#FF9F0A" label={t('typingIndicator')}
+                       sub={t('typingIndicatorSub')}
                        on={p.typingIndicator} onChange={(v) => save({ typingIndicator: v })} />
           </Group>
 
           <div className="priv-note">
             <Icon name="shield" size={15} />
             <span>
-              Owners and administrators can still view exact status for moderation, from the
-              admin panel only. Groups, Channels, Stories and Posts privacy will appear here
-              when those features arrive.
+              {t('privacyNote')}
             </span>
           </div>
         </div>
@@ -121,7 +119,7 @@ function VisRow({ icon, tint, label, value, onChange }: {
   return (
     <RowShell icon={icon} tint={tint} label={label}>
       <div className="seg glass vis-seg">
-        {VIS.map((o) => (
+        {VIS().map((o) => (
           <button key={o.value} className={value === o.value ? 'on' : ''} onClick={() => onChange(o.value)}>{o.label}</button>
         ))}
       </div>

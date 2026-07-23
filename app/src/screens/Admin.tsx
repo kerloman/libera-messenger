@@ -7,6 +7,7 @@ import { Avatar } from '../ui/Avatar'
 import { Icon } from '../ui/Icons'
 import { Logo } from '../ui/Logo'
 import { Verified } from '../ui/Verified'
+import { t } from '../lib/i18n'
 
 type Section = 'dashboard' | 'users' | 'reports' | 'logs'
 
@@ -31,10 +32,10 @@ export function Admin() {
   const me = state.me!
   const [section, setSection] = useState<Section>('dashboard')
   const nav: { id: Section; label: string; icon: string; minRole?: string[] }[] = [
-    { id: 'dashboard', label: 'Dashboard', icon: 'chart' },
-    { id: 'users', label: 'Users', icon: 'users' },
-    { id: 'reports', label: 'Reports', icon: 'flag' },
-    { id: 'logs', label: 'Logs', icon: 'database', minRole: ['admin', 'owner'] },
+    { id: 'dashboard', label: t('dashboard'), icon: 'chart' },
+    { id: 'users', label: t('usersNav'), icon: 'users' },
+    { id: 'reports', label: t('reports'), icon: 'flag' },
+    { id: 'logs', label: t('logs'), icon: 'database', minRole: ['admin', 'owner'] },
   ]
 
   return (
@@ -54,7 +55,7 @@ export function Admin() {
             ))}
           <div className="admin-nav-foot">
             <button className="admin-nav-btn" onClick={() => dispatch({ type: 'ADMIN', on: false })}>
-              <Icon name="logout" size={18} /> Exit panel
+              <Icon name="logout" size={18} /> {t('exitPanel')}
             </button>
           </div>
         </aside>
@@ -90,14 +91,14 @@ function useLoad<T>(path: string): [T | null, string | null, () => void] {
 function Dashboard() {
   const [stats, err] = useLoad<Stats>('/admin/stats')
   if (err) return <div className="admin-body"><div className="form-error">{err}</div></div>
-  if (!stats) return <div className="admin-body"><div className="list-hint">Loading…</div></div>
+  if (!stats) return <div className="admin-body"><div className="list-hint">{t('loading')}</div></div>
   const cards = [
-    { label: 'Registered users', value: stats.totals.users },
-    { label: 'Active users', value: stats.totals.activeUsers },
-    { label: 'Conversations', value: stats.totals.chats },
-    { label: 'Messages', value: stats.totals.messages },
-    { label: 'Calls', value: stats.totals.calls },
-    { label: 'Open reports', value: stats.totals.openReports },
+    { label: t('registeredUsers'), value: stats.totals.users },
+    { label: t('activeUsers'), value: stats.totals.activeUsers },
+    { label: t('conversations'), value: stats.totals.chats },
+    { label: t('messagesStat'), value: stats.totals.messages },
+    { label: t('callsStat'), value: stats.totals.calls },
+    { label: t('openReports'), value: stats.totals.openReports },
   ]
   const days = stats.messagesPerDay
   const max = Math.max(1, ...days.map((d) => d.n))
@@ -112,9 +113,9 @@ function Dashboard() {
         ))}
       </div>
       <div className="panel glass">
-        <div className="panel-head"><b>Messages per day</b><span>last 7 days</span></div>
+        <div className="panel-head"><b>{t('messagesPerDay')}</b><span>{t('last7Days')}</span></div>
         {days.length === 0 ? (
-          <div className="list-hint">No messages in the last 7 days.</div>
+          <div className="list-hint">{t('noMessages7d')}</div>
         ) : (
           <div className="bar-chart">
             {days.map((d) => (
@@ -149,17 +150,17 @@ function Users({ meRole, onToast }: { meRole: string; onToast: (m: string) => vo
   const act = async (u: AdminUser, body: Record<string, string>) => {
     try {
       await api.patch(`/admin/users/${u.id}`, body)
-      onToast(`@${u.username} updated`)
+      onToast(`@${u.username} ${t('updated')}`)
       load()
     } catch (e) {
       onToast((e as Error).message)
     }
   }
   const remove = async (u: AdminUser) => {
-    if (!confirm(`Delete account @${u.username}? This cannot be undone.`)) return
+    if (!confirm(`${t('deleteUserConfirm1')} @${u.username}? ${t('deleteUserConfirm2')}`)) return
     try {
       await api.del(`/admin/users/${u.id}`)
-      onToast(`@${u.username} deleted`)
+      onToast(`@${u.username} ${t('deletedToast')}`)
       load()
     } catch (e) {
       onToast((e as Error).message)
@@ -173,55 +174,55 @@ function Users({ meRole, onToast }: { meRole: string; onToast: (m: string) => vo
     <div className="admin-body">
       <div className="search glass admin-search">
         <Icon name="search" size={16} />
-        <input placeholder="Search by username or name" value={q} onChange={(e) => setQ(e.target.value)} />
+        <input placeholder={t('adminSearchUsers')} value={q} onChange={(e) => setQ(e.target.value)} />
       </div>
       <table className="admin-table glass">
         <thead>
-          <tr><th>User</th>{isAdmin && <th>Email</th>}<th>Last active</th><th>Role</th><th>Status</th><th /></tr>
+          <tr><th>{t('colUser')}</th>{isAdmin && <th>{t('colEmail')}</th>}<th>{t('colLastActive')}</th><th>{t('colRole')}</th><th>{t('colStatus')}</th><th /></tr>
         </thead>
         <tbody>
           {users?.map((u) => (
             <tr key={u.id}>
               <td>
                 <div className="cell-user">
-                  <span className={`admin-dot${u.realOnline ? ' on' : ''}`} title={u.realOnline ? 'Online now' : 'Offline'} />
+                  <span className={`admin-dot${u.realOnline ? ' on' : ''}`} title={u.realOnline ? t('onlineNow') : t('offline')} />
                   <Avatar name={u.displayName} seed={u.id} avatar={u.avatar} size={30} />
                   <div className="cell-2l"><span className="name-row"><span className="name-text">{u.displayName}</span>{u.verified && <Verified size={14} />}</span><small>@{u.username}</small></div>
                 </div>
               </td>
               {isAdmin && <td className="dim">{u.email}{u.emailVerified ? ' ✓' : ''}</td>}
-              <td className="dim">{u.realOnline ? 'online' : u.realLastSeenAt ? fmtTime(u.realLastSeenAt) : '—'}</td>
+              <td className="dim">{u.realOnline ? t('online') : u.realLastSeenAt ? fmtTime(u.realLastSeenAt) : '—'}</td>
               <td>
                 {isAdmin && u.role !== 'owner' ? (
                   <select className="select glass" value={u.role}
                           onChange={(e) => act(u, { role: e.target.value })}>
-                    {['user', 'moderator', 'admin'].map((r) => <option key={r}>{r}</option>)}
+                    {([['user', t('roleUser')], ['moderator', t('roleModerator')], ['admin', t('roleAdmin')]] as const).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                   </select>
                 ) : (
                   u.role
                 )}
               </td>
-              <td><span className={`pill${u.status === 'active' ? ' ok' : u.status === 'deleted' ? '' : ' bad'}`}>{u.status}</span></td>
+              <td><span className={`pill${u.status === 'active' ? ' ok' : u.status === 'deleted' ? '' : ' bad'}`}>{({ active: t('statusActive'), blocked: t('statusBlocked'), suspended: t('statusSuspended'), deleted: t('statusDeleted') } as Record<string, string>)[u.status] ?? u.status}</span></td>
               <td className="row-actions">
-                <button className="table-btn" onClick={() => setSecurityFor(u)}>Sessions</button>
+                <button className="table-btn" onClick={() => setSecurityFor(u)}>{t('sessions')}</button>
                 {u.status === 'active' && u.role !== 'owner' && (
                   <>
-                    <button className="table-btn warn" onClick={() => act(u, { status: 'suspended' })}>Suspend</button>
-                    <button className="table-btn danger" onClick={() => act(u, { status: 'blocked' })}>Block</button>
+                    <button className="table-btn warn" onClick={() => act(u, { status: 'suspended' })}>{t('suspend')}</button>
+                    <button className="table-btn danger" onClick={() => act(u, { status: 'blocked' })}>{t('blockAdmin')}</button>
                   </>
                 )}
                 {(u.status === 'blocked' || u.status === 'suspended') && (
-                  <button className="table-btn" onClick={() => act(u, { status: 'active' })}>Restore</button>
+                  <button className="table-btn" onClick={() => act(u, { status: 'active' })}>{t('restore')}</button>
                 )}
                 {isAdmin && u.status !== 'deleted' && u.role !== 'owner' && (
-                  <button className="table-btn danger" onClick={() => remove(u)}>Delete</button>
+                  <button className="table-btn danger" onClick={() => remove(u)}>{t('deleteAdmin')}</button>
                 )}
               </td>
             </tr>
           ))}
         </tbody>
       </table>
-      {users?.length === 0 && <div className="list-hint">No users match.</div>}
+      {users?.length === 0 && <div className="list-hint">{t('noUsersMatch')}</div>}
       {securityFor && <SecurityModal user={securityFor} onClose={() => setSecurityFor(null)} />}
     </div>
   )
@@ -233,19 +234,19 @@ function SecurityModal({ user, onClose }: { user: AdminUser; onClose: () => void
     <div className="overlay" onClick={onClose} style={{ zIndex: 200 }}>
       <div className="sec-modal glass-panel" onClick={(e) => e.stopPropagation()}>
         <div className="panel-head" style={{ justifyContent: 'space-between' }}>
-          <b>@{user.username} · security</b>
+          <b>@{user.username} · {t('security')}</b>
           <button className="icon-btn" onClick={onClose}><Icon name="x" size={18} /></button>
         </div>
         {err && <div className="form-error">{err}</div>}
-        {!data ? <div className="list-hint">Loading…</div> : (
+        {!data ? <div className="list-hint">{t('loading')}</div> : (
           <>
             <div className="sec-grid">
-              <div><small>Status</small><b className={data.online ? 'on' : ''}>{data.online ? 'Online now' : 'Offline'}</b></div>
-              <div><small>Exact last seen</small><b>{data.lastSeenAt ? fmtTime(data.lastSeenAt) : '—'}</b></div>
-              <div><small>Last login</small><b>{data.lastLoginAt ? fmtTime(data.lastLoginAt) : '—'}</b></div>
-              <div><small>Active sessions</small><b>{data.activeSessions}</b></div>
+              <div><small>{t('status')}</small><b className={data.online ? 'on' : ''}>{data.online ? t('onlineNow') : t('offline')}</b></div>
+              <div><small>{t('exactLastSeen')}</small><b>{data.lastSeenAt ? fmtTime(data.lastSeenAt) : '—'}</b></div>
+              <div><small>{t('lastLogin')}</small><b>{data.lastLoginAt ? fmtTime(data.lastLoginAt) : '—'}</b></div>
+              <div><small>{t('activeSessions')}</small><b>{data.activeSessions}</b></div>
             </div>
-            <div className="sec-note"><Icon name="shield" size={13} /> Moderation view — not visible to normal users.</div>
+            <div className="sec-note"><Icon name="shield" size={13} /> {t('moderationView')}</div>
             <div className="sec-sessions">
               {data.sessions.map((s, i) => (
                 <div key={i} className="sec-session">
@@ -255,7 +256,7 @@ function SecurityModal({ user, onClose }: { user: AdminUser; onClose: () => void
                     <small>{s.device}</small>
                   </div>
                   <div className="sec-s-meta">
-                    <span>{s.ip ?? 'ip n/a'}</span>
+                    <span>{s.ip ?? t('ipNa')}</span>
                     <small>{fmtTime(s.createdAt)}</small>
                   </div>
                 </div>
@@ -281,22 +282,22 @@ function Reports({ onToast }: { onToast: (m: string) => void }) {
   if (err) return <div className="admin-body"><div className="form-error">{err}</div></div>
   return (
     <div className="admin-body">
-      {data?.reports.length === 0 && <div className="list-hint">No reports. 🎉</div>}
+      {data?.reports.length === 0 && <div className="list-hint">{t('noReports')}</div>}
       {data?.reports.map((r) => (
         <div key={r.id} className={`report glass${r.status !== 'open' ? ' resolved' : ''}`}>
           <div className="report-head">
             <span className={`pill ${r.reason === 'Spam' ? 'warn' : 'bad'}`}>{r.reason}</span>
             <b>@{r.target.username}</b>
-            <span className="dim">reported by @{r.reporter} · {fmtTime(r.createdAt)}</span>
+            <span className="dim">{t('reportedBy')} @{r.reporter} · {fmtTime(r.createdAt)}</span>
           </div>
           {r.details && <p>{r.details}</p>}
           {r.status === 'open' ? (
             <div className="report-actions">
-              <button className="table-btn" onClick={() => act(r.id, 'dismissed')}>Dismiss</button>
-              <button className="table-btn warn" onClick={() => act(r.id, 'resolved')}>Mark resolved</button>
+              <button className="table-btn" onClick={() => act(r.id, 'dismissed')}>{t('dismiss')}</button>
+              <button className="table-btn warn" onClick={() => act(r.id, 'resolved')}>{t('markResolved')}</button>
             </div>
           ) : (
-            <span className="resolved-tag"><Icon name="check" size={14} /> {r.status}</span>
+            <span className="resolved-tag"><Icon name="check" size={14} /> {r.status === 'resolved' ? t('resolved') : t('dismissed')}</span>
           )}
         </div>
       ))}
@@ -310,13 +311,13 @@ function Logs() {
   return (
     <div className="admin-body">
       <div className="panel glass logs">
-        {data?.logs.length === 0 && <div className="list-hint">No log entries yet.</div>}
+        {data?.logs.length === 0 && <div className="list-hint">{t('noLogs')}</div>}
         {data?.logs.map((l) => (
           <div key={l.id} className="log-line">
             <span className="log-t">{fmtTime(l.at)}</span>
             <span className="pill ok">{l.action}</span>
             <span className="log-msg">
-              {l.actor ? `@${l.actor}` : 'system'}{l.meta ? ` · ${l.meta}` : ''}
+              {l.actor ? `@${l.actor}` : t('system')}{l.meta ? ` · ${l.meta}` : ''}
             </span>
           </div>
         ))}

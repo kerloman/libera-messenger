@@ -18,16 +18,18 @@
 :root[data-theme="light"] {
   --bg: #E9EDF5;
   --ink: #0B0D12;
-  --ink-2: #5B6472;
-  --ink-3: #8A93A3;
-  --surface: rgba(255, 255, 255, .72);
-  --surface-2: rgba(255, 255, 255, .55);
+  --ink-2: #454E5F;   /* 7.4:1 on white — comfortably AA for secondary text */
+  --ink-3: #5F6979;   /* 5.2:1 — meets AA even at footnote sizes */
+  --surface: rgba(255, 255, 255, .86);
+  --surface-2: rgba(255, 255, 255, .78);
   --solid: #FFFFFF;
-  --stroke: rgba(11, 13, 18, .08);
+  --stroke: rgba(11, 13, 18, .12);
   --highlight: rgba(255, 255, 255, .55);
   --shadow: 0 8px 32px rgba(6, 10, 20, .10);
-  --bubble-in: rgba(255, 255, 255, .82);
-  --hover: rgba(11, 13, 18, .045);
+  --bubble-in: rgba(255, 255, 255, .9);
+  --hover: rgba(11, 13, 18, .05);
+  /* adaptive profile header: saturation/lightness/alpha caps keep text AA-readable */
+  --hero-sat: 62%; --hero-l1: 80%; --hero-l2: 84%; --hero-a1: .6; --hero-a2: .45;
 }
 
 :root[data-theme="dark"] {
@@ -43,6 +45,7 @@
   --shadow: 0 8px 32px rgba(0, 0, 0, .45);
   --bubble-in: rgba(38, 43, 58, .78);
   --hover: rgba(255, 255, 255, .05);
+  --hero-sat: 58%; --hero-l1: 40%; --hero-l2: 34%; --hero-a1: .55; --hero-a2: .4;
 }
 
 html, body, #root { height: 100%; }
@@ -1405,3 +1408,30 @@ input:focus, textarea:focus, select:focus, button:focus { outline: none; }
 .sound-chip:hover { filter: brightness(1.06); }
 .sound-chip svg { color: var(--accent); flex-shrink: 0; }
 .sound-chip:active { transform: scale(.97); }
+
+/* ============ verified popup + adaptive hero + light-mode profile polish ============ */
+.verified-wrap { position: relative; display: inline-flex; align-items: center; }
+.verified-badge { cursor: pointer; }
+.verified-pop {
+  position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+  padding: 7px 13px; border-radius: 12px;
+  font-size: 12.5px; font-weight: 650; letter-spacing: -.01em; white-space: nowrap;
+  color: var(--ink);
+  z-index: 400;
+  animation: pop-in .22s var(--ease);
+  pointer-events: none;
+}
+.verified-pop::after {
+  content: ""; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+  border: 5px solid transparent; border-top-color: var(--surface);
+}
+@keyframes pop-in { from { opacity: 0; transform: translateX(-50%) translateY(4px) scale(.92); } }
+
+/* adaptive hero: soften with blur so extracted colors read as an Apple-Music-style wash */
+.pp-hero-glow { filter: blur(28px); transform: scale(1.15); opacity: 1; }
+.pp-hero > *:not(.pp-hero-glow) { position: relative; z-index: 1; }
+.pp-hero h2, .pp-hero .pp-username { text-shadow: 0 1px 2px color-mix(in srgb, var(--bg) 55%, transparent); }
+:root[data-theme="light"] .pp-status { color: #4A5364; }
+:root[data-theme="light"] .pp-danger-btn { background: rgba(255, 255, 255, .82); }
+:root[data-theme="light"] .pp-empty-media,
+:root[data-theme="light"] .pp-section-label { color: #5F6979; }

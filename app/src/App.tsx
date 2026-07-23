@@ -8,12 +8,13 @@ import { Calls, CallOverlay, IncomingCall } from './screens/Calls'
 import { Settings } from './screens/Settings'
 import { Admin } from './screens/Admin'
 import { Icon } from './ui/Icons'
+import { t as tr } from './lib/i18n'
 import { Logo } from './ui/Logo'
 
-const tabs: { id: Tab; label: string; icon: string }[] = [
-  { id: 'chats', label: 'Chats', icon: 'chat' },
-  { id: 'calls', label: 'Calls', icon: 'phone' },
-  { id: 'settings', label: 'Settings', icon: 'gear' },
+const tabs: { id: Tab; labelKey: 'tabChats' | 'tabCalls' | 'tabSettings'; icon: string }[] = [
+  { id: 'chats', labelKey: 'tabChats', icon: 'chat' },
+  { id: 'calls', labelKey: 'tabCalls', icon: 'phone' },
+  { id: 'settings', labelKey: 'tabSettings', icon: 'gear' },
 ]
 
 export function App() {
@@ -61,7 +62,7 @@ export function App() {
                 key={t.id}
                 className={`rail-btn${state.tab === t.id ? ' active' : ''}`}
                 onClick={() => dispatch({ type: 'TAB', tab: t.id })}
-                title={t.label}
+                title={tr(t.labelKey)}
               >
                 <Icon name={t.icon} size={24} />
                 {t.id === 'chats' && unread > 0 && <span className="badge">{unread}</span>}
@@ -75,7 +76,7 @@ export function App() {
             ) : (
               <div className="empty-main">
                 <Logo size={72} />
-                <p>Select a conversation</p>
+                <p>{tr('selectConversation')}</p>
               </div>
             )}
           </main>
@@ -98,7 +99,7 @@ export function App() {
                       <Icon name={t.icon} size={25} />
                       {t.id === 'chats' && unread > 0 && <span className="badge">{unread}</span>}
                     </span>
-                    <span className="tab-label">{t.label}</span>
+                    <span className="tab-label">{tr(t.labelKey)}</span>
                   </button>
                 ))}
               </nav>

@@ -166,6 +166,8 @@ for (const [col, def] of Object.entries(privacyCols)) {
   if (!userCols.includes(col)) db.exec(`ALTER TABLE users ADD COLUMN ${col} ${def}`)
 }
 
+if (!userCols.includes('language')) db.exec('ALTER TABLE users ADD COLUMN language TEXT')
+
 const sessionCols = db.prepare('PRAGMA table_info(sessions)').all().map((c) => c.name)
 if (!sessionCols.includes('ip')) db.exec('ALTER TABLE sessions ADD COLUMN ip TEXT')
 if (!sessionCols.includes('platform')) db.exec('ALTER TABLE sessions ADD COLUMN platform TEXT')

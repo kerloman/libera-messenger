@@ -3,11 +3,12 @@ import { useStore } from '../store'
 import type { Category, Mode, SoundName, SoundSettings } from '../lib/sound'
 import { preview } from '../lib/sound'
 import { Icon } from '../ui/Icons'
+import { t } from '../lib/i18n'
 
-const MODES: { value: Mode; label: string }[] = [
-  { value: 'default', label: 'Libera' },
-  { value: 'system', label: 'System' },
-  { value: 'silent', label: 'Silent' },
+const MODES = (): { value: Mode; label: string }[] => [
+  { value: 'default', label: t('modeLibera') },
+  { value: 'system', label: t('modeSystem') },
+  { value: 'silent', label: t('modeSilent') },
 ]
 
 // A representative sound to preview for each category.
@@ -20,39 +21,39 @@ const PREVIEW: Record<Category, SoundName> = {
   story: 'storyPublished',
 }
 
-const CATEGORIES: { key: Category; icon: string; tint: string; label: string; sub: string }[] = [
-  { key: 'message', icon: 'chat', tint: '#4D7CFE', label: 'Messages', sub: 'Send, receive, media, reactions' },
-  { key: 'call', icon: 'phone', tint: '#30C465', label: 'Calls', sub: 'Ringtone, connect, end' },
-  { key: 'notification', icon: 'bell', tint: '#FF4D5E', label: 'Notifications', sub: 'Push, mentions, requests' },
-  { key: 'story', icon: 'photo', tint: '#FF9F0A', label: 'Stories', sub: 'Published, reactions' },
-  { key: 'group', icon: 'users', tint: '#BF5AF2', label: 'Groups', sub: 'Applies when groups arrive' },
-  { key: 'channel', icon: 'speaker', tint: '#5E5CE6', label: 'Channels', sub: 'Applies when channels arrive' },
+const CATEGORIES = (): { key: Category; icon: string; tint: string; label: string; sub: string }[] => [
+  { key: 'message', icon: 'chat', tint: '#4D7CFE', label: t('catMessages'), sub: t('catMessagesSub') },
+  { key: 'call', icon: 'phone', tint: '#30C465', label: t('catCalls'), sub: t('catCallsSub') },
+  { key: 'notification', icon: 'bell', tint: '#FF4D5E', label: t('catNotifications'), sub: t('catNotificationsSub') },
+  { key: 'story', icon: 'photo', tint: '#FF9F0A', label: t('catStories'), sub: t('catStoriesSub') },
+  { key: 'group', icon: 'users', tint: '#BF5AF2', label: t('catGroups'), sub: t('catGroupsSub') },
+  { key: 'channel', icon: 'speaker', tint: '#5E5CE6', label: t('catChannels'), sub: t('catChannelsSub') },
 ]
 
 // Sounds you can audition individually, grouped, so the whole identity is previewable.
-const LIBRARY: { group: string; items: { name: SoundName; label: string }[] }[] = [
-  { group: 'Messages', items: [
-    { name: 'messageSent', label: 'Message sent' }, { name: 'messageReceived', label: 'Message received' },
-    { name: 'photoSent', label: 'Photo sent' }, { name: 'photoReceived', label: 'Photo received' },
-    { name: 'fileSent', label: 'File sent' }, { name: 'fileReceived', label: 'File received' },
-    { name: 'voiceSent', label: 'Voice sent' }, { name: 'voiceReceived', label: 'Voice received' },
-    { name: 'messageReaction', label: 'Reaction' }, { name: 'messageEdited', label: 'Edited' }, { name: 'messageDeleted', label: 'Deleted' },
+const LIBRARY = (): { group: string; items: { name: SoundName; label: string }[] }[] => [
+  { group: t('catMessages'), items: [
+    { name: 'messageSent', label: t('sMessageSent') }, { name: 'messageReceived', label: t('sMessageReceived') },
+    { name: 'photoSent', label: t('sPhotoSent') }, { name: 'photoReceived', label: t('sPhotoReceived') },
+    { name: 'fileSent', label: t('sFileSent') }, { name: 'fileReceived', label: t('sFileReceived') },
+    { name: 'voiceSent', label: t('sVoiceSent') }, { name: 'voiceReceived', label: t('sVoiceReceived') },
+    { name: 'messageReaction', label: t('sReaction') }, { name: 'messageEdited', label: t('sEdited') }, { name: 'messageDeleted', label: t('sDeleted') },
   ] },
-  { group: 'Calls', items: [
-    { name: 'ringIncoming', label: 'Incoming ringtone' }, { name: 'ringOutgoing', label: 'Ringback' },
-    { name: 'callConnected', label: 'Connected' }, { name: 'callEnded', label: 'Ended' },
-    { name: 'callDeclined', label: 'Declined' }, { name: 'callFailed', label: 'Failed' },
-    { name: 'callMissed', label: 'Missed' }, { name: 'callBusy', label: 'Busy' },
+  { group: t('catCalls'), items: [
+    { name: 'ringIncoming', label: t('sRingIncoming') }, { name: 'ringOutgoing', label: t('sRingback') },
+    { name: 'callConnected', label: t('sConnected') }, { name: 'callEnded', label: t('sEnded') },
+    { name: 'callDeclined', label: t('sDeclined') }, { name: 'callFailed', label: t('sFailed') },
+    { name: 'callMissed', label: t('sMissed') }, { name: 'callBusy', label: t('sBusy') },
   ] },
-  { group: 'Notifications', items: [
-    { name: 'push', label: 'Push' }, { name: 'mention', label: 'Mention' },
-    { name: 'friendRequest', label: 'Friend request' }, { name: 'newContact', label: 'New contact' },
-    { name: 'addedToGroup', label: 'Added to group' }, { name: 'addedToChannel', label: 'Added to channel' },
-    { name: 'adminNotice', label: 'Admin' }, { name: 'securityNotice', label: 'Security' },
+  { group: t('catNotifications'), items: [
+    { name: 'push', label: t('sPush') }, { name: 'mention', label: t('sMention') },
+    { name: 'friendRequest', label: t('sFriendRequest') }, { name: 'newContact', label: t('sNewContact') },
+    { name: 'addedToGroup', label: t('sAddedGroup') }, { name: 'addedToChannel', label: t('sAddedChannel') },
+    { name: 'adminNotice', label: t('sAdmin') }, { name: 'securityNotice', label: t('sSecurity') },
   ] },
-  { group: 'Stories & UI', items: [
-    { name: 'storyPublished', label: 'Story published' }, { name: 'storyReaction', label: 'Story reaction' },
-    { name: 'success', label: 'Success' }, { name: 'error', label: 'Error' },
+  { group: t('storiesUi'), items: [
+    { name: 'storyPublished', label: t('sStoryPublished') }, { name: 'storyReaction', label: t('sStoryReaction') },
+    { name: 'success', label: t('sSuccess') }, { name: 'error', label: t('sError') },
   ] },
 ]
 
@@ -70,36 +71,34 @@ export function SoundsHaptics({ onClose }: { onClose: () => void }) {
       <div className="profile-page glass-panel" onClick={(e) => e.stopPropagation()}>
         <header className="pp-head">
           <button className="icon-btn" onClick={onClose}><Icon name="back" size={22} /></button>
-          <span className="pp-head-title">Sounds &amp; Haptics</span>
+          <span className="pp-head-title">{t('soundsHaptics')}</span>
         </header>
 
         <div className="pp-scroll priv-scroll">
           <p className="priv-intro">
-            Libera has its own synthesized sound identity — soft, minimal tones from one tonal
-            family. Choose <b>Libera</b> for the branded sound, <b>System</b> to defer to your
-            device, or <b>Silent</b>. Tap any row’s ▶ to preview.
+            {t('soundsIntro')}
           </p>
 
-          <Group label="Master">
-            <RowShell icon="speaker" tint="#32ADE6" label="Volume">
+          <Group label={t('master')}>
+            <RowShell icon="speaker" tint="#32ADE6" label={t('volume')}>
               <input className="slider" type="range" min="0" max="1" step="0.05"
                      value={s.master} onChange={(e) => setSound({ master: Number(e.target.value) })} />
             </RowShell>
-            <ToggleRow icon="wave" tint="#30C465" label="Haptic feedback" sub="Subtle vibration on actions"
+            <ToggleRow icon="wave" tint="#30C465" label={t('hapticFeedback')} sub={t('hapticSub')}
                        on={s.haptics} onChange={(v) => setSound({ haptics: v })} />
-            <ToggleRow icon="bell" tint="#FF9F0A" label="Vibration" sub="Web/Android vibration patterns"
+            <ToggleRow icon="bell" tint="#FF9F0A" label={t('vibration')} sub={t('vibrationSub')}
                        on={s.vibration} onChange={(v) => setSound({ vibration: v })} />
           </Group>
 
-          <Group label="Sound categories">
-            {CATEGORIES.map((c) => (
+          <Group label={t('soundCategories')}>
+            {CATEGORIES().map((c) => (
               <RowShell key={c.key} icon={c.icon} tint={c.tint} label={c.label} sub={c.sub}>
                 <div className="sound-row-side">
-                  <button className="preview-btn" title="Preview" onClick={() => preview(PREVIEW[c.key])}>
+                  <button className="preview-btn" title={t('previewGroup')} onClick={() => preview(PREVIEW[c.key])}>
                     <Icon name="send" size={15} />
                   </button>
                   <div className="seg glass mode-seg">
-                    {MODES.map((m) => (
+                    {MODES().map((m) => (
                       <button key={m.value} className={s.categories[c.key] === m.value ? 'on' : ''}
                               onClick={() => setCategory(c.key, m.value)}>{m.label}</button>
                     ))}
@@ -109,8 +108,8 @@ export function SoundsHaptics({ onClose }: { onClose: () => void }) {
             ))}
           </Group>
 
-          {LIBRARY.map((grp) => (
-            <Group key={grp.group} label={`Preview · ${grp.group}`}>
+          {LIBRARY().map((grp) => (
+            <Group key={grp.group} label={`${t('previewGroup')} · ${grp.group}`}>
               <div className="sound-grid">
                 {grp.items.map((it) => (
                   <button key={it.name} className="sound-chip" onClick={() => preview(it.name)}>
@@ -122,15 +121,14 @@ export function SoundsHaptics({ onClose }: { onClose: () => void }) {
           ))}
 
           <button className="logout-btn glass" style={{ color: 'var(--accent)' }}
-                  onClick={() => { setSound({ ...defaultReset() }); actions.toast('Default sounds restored') }}>
-            Restore default sounds
+                  onClick={() => { setSound({ ...defaultReset() }); actions.toast(t('defaultsRestored')) }}>
+            {t('restoreDefaults')}
           </button>
 
           <div className="priv-note">
             <Icon name="info" size={15} />
             <span>
-              Native ringtone pickers (choosing an OS ringtone on iOS/Android) require platform
-              plugins; the branded Libera sounds and haptics work on every platform today.
+              {t('soundNote')}
             </span>
           </div>
         </div>

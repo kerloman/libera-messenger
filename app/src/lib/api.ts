@@ -1,5 +1,7 @@
 // Thin fetch wrapper for the Libera REST API. Throws Error with the server's
-// human-readable message on failure.
+// human-readable message on failure (localized via the i18n error map).
+import { t, translateServer } from './i18n'
+
 export class ApiError extends Error {
   status: number
   constructor(message: string, status: number) {
@@ -20,9 +22,13 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   try {
     json = await res.json()
   } catch {
-    throw new ApiError('Server unavailable. Is the backend running?', res.status)
+    throw new ApiError(translateServer('Server unavailable. Is the backend running?'), res.status)
   }
-  if (!res.ok) throw new ApiError(json?.error ?? `Request failed (${res.status})`, res.status)
+  if (!res.ok)
+    throw new ApiError(
+      json?.error ? translateServer(json.error) : `${t('sError')} (${res.status})`,
+      res.status,
+    )
   return json
 }
 

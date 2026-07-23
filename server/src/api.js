@@ -255,6 +255,14 @@ export function makeApi(rt) {
       const b = String(bio).slice(0, 200)
       db.prepare('UPDATE users SET bio = ? WHERE id = ?').run(b, req.user.id)
     }
+    if (req.body?.language !== undefined) {
+      const lang = req.body.language
+      if (lang !== null && !['en', 'ru'].includes(lang))
+        return res.status(400).json({ error: 'Unsupported language.' })
+      db.prepare('UPDATE users SET language = ? WHERE id = ?').run(lang, req.user.id)
+      // instant cross-device sync
+      rt.emitToUser(req.user.id, 'me:language', { language: lang })
+    }
     res.json({ user: meUser(db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id)) })
   })
 

@@ -1,5 +1,6 @@
 // Shared types and pure helpers. All actual data comes from the server —
 // nothing in this file defines users, chats, or messages.
+import { t, translateServer } from './lib/i18n'
 
 export type Visibility = 'everyone' | 'contacts' | 'nobody'
 export type LastSeenMode = 'exact' | 'recently' | 'week' | 'month' | 'long'
@@ -36,6 +37,7 @@ export type Me = User & {
   email: string
   emailVerified: boolean
   deleteScheduledAt?: string | null
+  language?: string | null // account-level language choice, synced across devices
   privacy: Privacy
 }
 
@@ -131,9 +133,9 @@ export function fmtTime(iso: string | undefined | null) {
 }
 
 export function fmtLastSeen(iso: string | null | undefined, label?: string | null) {
-  if (label) return label
-  if (!iso) return 'last seen recently'
-  return `last seen ${fmtTime(iso)}`
+  if (label) return translateServer(label) // server sends coarse labels in English
+  if (!iso) return t('lastSeenRecently')
+  return `${t('lastSeen')} ${fmtTime(iso)}`
 }
 
 export function daysUntil(iso: string | null | undefined): number {
@@ -158,13 +160,13 @@ export function fmtDuration(sec: number | null | undefined) {
 }
 
 export function preview(m: Message | null): string {
-  if (!m) return 'No messages yet'
-  if (m.deleted) return 'Message deleted'
+  if (!m) return t('noMessagesYet')
+  if (m.deleted) return t('messageDeleted')
   switch (m.kind) {
-    case 'image': return `📷 Photo${m.body ? ' · ' + m.body : ''}`
-    case 'video': return `🎬 Video${m.body ? ' · ' + m.body : ''}`
-    case 'voice': return `🎤 Voice message`
-    case 'file': return `📎 ${m.attachment?.name ?? 'File'}`
+    case 'image': return `📷 ${t('photoPreview')}${m.body ? ' · ' + m.body : ''}`
+    case 'video': return `🎬 ${t('videoPreview')}${m.body ? ' · ' + m.body : ''}`
+    case 'voice': return `🎤 ${t('voicePreview')}`
+    case 'file': return `📎 ${m.attachment?.name ?? t('filePreview')}`
     default: return m.body ?? ''
   }
 }

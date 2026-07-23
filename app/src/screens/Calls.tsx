@@ -6,6 +6,7 @@ import { acceptCall, declineCall, endCall, startCall, streams, switchCamera, tog
 import { useStore } from '../store'
 import { Avatar } from '../ui/Avatar'
 import { Icon } from '../ui/Icons'
+import { t } from '../lib/i18n'
 
 export function Calls() {
   const { state } = useStore()
@@ -22,23 +23,23 @@ export function Calls() {
     <div className="screen">
       <header className="screen-head">
         <div className="head-row">
-          <h1>Calls</h1>
+          <h1>{t('calls')}</h1>
         </div>
       </header>
       <div className="e2e-banner glass">
         <Icon name="lock" size={15} />
         <div>
-          <b>Peer-to-peer calls</b>
-          <span>Audio & video flow directly between devices (WebRTC)</span>
+          <b>{t('p2pCalls')}</b>
+          <span>{t('p2pCallsSub')}</span>
         </div>
       </div>
       <div className="list">
-        {calls === null && <div className="list-hint">Loading…</div>}
+        {calls === null && <div className="list-hint">{t('loading')}</div>}
         {calls?.length === 0 && (
           <div className="empty-list">
             <Icon name="phone" size={40} />
-            <p><b>No calls yet</b></p>
-            <span>Open a chat and tap the phone or camera icon to start a call.</span>
+            <p><b>{t('noCalls')}</b></p>
+            <span>{t('noCallsHint')}</span>
           </div>
         )}
         {calls?.map((c) => (
@@ -51,8 +52,8 @@ export function Calls() {
               <span className="row-preview">
                 <Icon name={c.direction === 'in' ? 'reply' : 'forward'} size={13}
                       className={c.status === 'missed' || c.status === 'declined' ? 'missed' : 'ok'} />{' '}
-                {c.status === 'missed' ? 'Missed' : c.status === 'declined' ? 'Declined' : c.direction === 'in' ? 'Incoming' : 'Outgoing'}
-                {c.video ? ' · video' : ''}
+                {c.status === 'missed' ? t('missed') : c.status === 'declined' ? t('declined') : c.direction === 'in' ? t('incoming') : t('outgoing')}
+                {c.video ? ` · ${t('video')}` : ''}
                 {c.answeredAt && c.endedAt
                   ? ` · ${fmtDuration((new Date(c.endedAt).getTime() - new Date(c.answeredAt).getTime()) / 1000)}`
                   : ''}
@@ -61,7 +62,7 @@ export function Calls() {
             <span className="row-time">{fmtTime(c.startedAt)}</span>
             <button
               className="icon-btn"
-              title="Call back"
+              title={t('callBack')}
               onClick={() => startCall(c.chatId, { ...c.peer, avatar: null }, c.video)}
             >
               <Icon name={c.video ? 'video' : 'phone'} size={21} />
@@ -84,15 +85,15 @@ export function IncomingCall() {
           <Avatar name={call.peer.displayName} seed={call.peer.id} avatar={call.peer.avatar} size={116} />
         </div>
         <h2>{call.peer.displayName}</h2>
-        <p className="call-status">Incoming {call.video ? 'video' : 'voice'} call…</p>
+        <p className="call-status">{call.video ? t('incomingVideoCall') : t('incomingVoiceCall')}</p>
         <div className="call-btns">
-          <button className="call-btn end" onClick={declineCall} title="Decline">
+          <button className="call-btn end" onClick={declineCall} title={t('declineBtn')}>
             <Icon name="phone" size={24} />
-            <span>decline</span>
+            <span>{t('declineBtn')}</span>
           </button>
-          <button className="call-btn accept" onClick={acceptCall} title="Accept">
+          <button className="call-btn accept" onClick={acceptCall} title={t('accept')}>
             <Icon name={call.video ? 'video' : 'phone'} size={24} />
-            <span>accept</span>
+            <span>{t('accept')}</span>
           </button>
         </div>
       </div>
@@ -126,17 +127,17 @@ export function CallOverlay() {
 
   const trySpeaker = async () => {
     const el = (call.video ? remoteVideo.current : remoteAudio.current) as (HTMLMediaElement & { setSinkId?: (id: string) => Promise<void> }) | null
-    if (!el?.setSinkId) return setSinkMsg('Speaker selection not supported in this browser')
+    if (!el?.setSinkId) return setSinkMsg(t('speakerUnsupported'))
     const outs = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === 'audiooutput')
-    if (outs.length < 2) return setSinkMsg('No alternate audio output found')
+    if (outs.length < 2) return setSinkMsg(t('noAltOutput'))
     const next = outs[(outs.findIndex((d) => d.deviceId === (el.sinkId || 'default')) + 1) % outs.length]
-    await el.setSinkId(next.deviceId).catch(() => setSinkMsg('Could not switch output'))
-    setSinkMsg(next.label || 'Output switched')
+    await el.setSinkId(next.deviceId).catch(() => setSinkMsg(t('outputSwitchFail')))
+    setSinkMsg(next.label || t('outputSwitched'))
     setTimeout(() => setSinkMsg(null), 1800)
   }
 
   const status =
-    call.phase === 'outgoing' ? `Calling ${call.peer.displayName}…` : fmtDuration(sec)
+    call.phase === 'outgoing' ? `${t('calling')} ${call.peer.displayName}…` : fmtDuration(sec)
 
   return (
     <div className={`overlay call-overlay${call.video ? ' video' : ''}`}>
@@ -159,29 +160,29 @@ export function CallOverlay() {
         <p className="call-status">{status}</p>
         {sinkMsg && <p className="sink-msg">{sinkMsg}</p>}
         <div className="call-btns">
-          <button className={`call-btn glass-dark${call.muted ? ' on' : ''}`} onClick={toggleMute} title="Mute">
+          <button className={`call-btn glass-dark${call.muted ? ' on' : ''}`} onClick={toggleMute} title={t('muteBtn')}>
             <Icon name={call.muted ? 'micOff' : 'mic'} size={24} />
-            <span>mute</span>
+            <span>{t('muteBtn')}</span>
           </button>
-          <button className="call-btn glass-dark" onClick={trySpeaker} title="Audio output">
+          <button className="call-btn glass-dark" onClick={trySpeaker} title={t('audioBtn')}>
             <Icon name="speaker" size={24} />
-            <span>audio</span>
+            <span>{t('audioBtn')}</span>
           </button>
           {call.video && (
             <>
-              <button className={`call-btn glass-dark${call.camOff ? ' on' : ''}`} onClick={toggleCamera} title="Camera on/off">
+              <button className={`call-btn glass-dark${call.camOff ? ' on' : ''}`} onClick={toggleCamera} title={t('cameraBtn')}>
                 <Icon name={call.camOff ? 'videoOff' : 'video'} size={24} />
-                <span>camera</span>
+                <span>{t('cameraBtn')}</span>
               </button>
-              <button className="call-btn glass-dark" onClick={switchCamera} title="Switch camera">
+              <button className="call-btn glass-dark" onClick={switchCamera} title={t('flipBtn')}>
                 <Icon name="camera" size={24} />
-                <span>flip</span>
+                <span>{t('flipBtn')}</span>
               </button>
             </>
           )}
-          <button className="call-btn end" onClick={endCall} title="End call">
+          <button className="call-btn end" onClick={endCall} title={t('endBtn')}>
             <Icon name="phone" size={24} />
-            <span>end</span>
+            <span>{t('endBtn')}</span>
           </button>
         </div>
       </div>
