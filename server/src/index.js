@@ -15,6 +15,9 @@ const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)))
 
 const app = express()
 app.disable('x-powered-by')
+// Behind a hosting proxy (Render/Railway/Fly) this makes req.ip the real
+// client address, so rate limiting doesn't lump every user together.
+app.set('trust proxy', 1)
 app.use(express.json({ limit: '1mb' }))
 
 const server = http.createServer(app)

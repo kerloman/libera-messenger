@@ -157,7 +157,9 @@ export function destroySession(t) {
 }
 
 export function cookieOpts() {
-  return `HttpOnly; Path=/; SameSite=Lax; Max-Age=${SESSION_DAYS * 86400}`
+  // Secure flag in production (behind an HTTPS proxy such as Render/Railway).
+  const secure = process.env.NODE_ENV === 'production' ? '; Secure' : ''
+  return `HttpOnly; Path=/; SameSite=Lax; Max-Age=${SESSION_DAYS * 86400}${secure}`
 }
 
 export function parseCookies(header) {

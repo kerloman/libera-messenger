@@ -1,0 +1,26 @@
+# Render.com blueprint — deploy Libera with one click:
+# New → Blueprint → select this repository.
+services:
+  - type: web
+    name: libera
+    runtime: node
+    plan: free            # switch to "starter" to attach a persistent disk (see below)
+    buildCommand: npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SESSION_SECRET
+        generateValue: true   # Render generates a strong random secret
+    # --- Persistent storage (Starter plan and up) ---
+    # On the FREE plan the filesystem is ephemeral: the SQLite database and
+    # uploads are wiped whenever the service redeploys or restarts after idle
+    # sleep. Fine for a demo; for real use uncomment this and set the plan
+    # above to "starter":
+    # disk:
+    #   name: libera-data
+    #   mountPath: /var/data
+    #   sizeGB: 1
+    # ...and add:
+    # envVars entries  DATA_DIR=/var/data  and  UPLOADS_DIR=/var/data/uploads

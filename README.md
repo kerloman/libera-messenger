@@ -99,6 +99,20 @@ Open http://localhost:5173. The Vite dev server proxies `/api`, `/uploads` and
 `npm start --prefix server` — the server detects `app/dist/` and serves the
 built client itself on port 3001.
 
+
+## 7½ · Deploy to the cloud (share with friends)
+
+The repo ships a [render.yaml](render.yaml) blueprint. On [Render](https://render.com):
+**New → Blueprint → select this repo** — it builds the client, starts the server with a
+generated `SESSION_SECRET`, and serves everything over HTTPS (so calls, microphone and
+camera work). The first person to register on your deployed instance becomes its owner.
+
+⚠️ On Render's **free** plan the filesystem is ephemeral: the SQLite database (accounts,
+messages) resets when the service redeploys or restarts after idle sleep, and it sleeps
+after ~15 min of inactivity (first visit then takes ~1 min). Fine for demos. For real
+use, switch to the Starter plan and uncomment the `disk` section in render.yaml, or run
+the server on any VPS. For calls across strict mobile networks configure `TURN_*` env vars.
+
 ## 8 · First administrator
 
 The **first account ever registered becomes the owner** — register yours before
